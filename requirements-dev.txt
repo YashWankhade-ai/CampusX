@@ -1,0 +1,7 @@
+pytest
+pytest-flask
+pytest-cov
+black
+flake8
+mypy
+faker

@@ -1,0 +1,48 @@
+
+:root {
+    --lumina-primary: #6366f1;
+    --lumina-primary-hover: #4f46e5;
+    --lumina-bg-light: #f8fafc;
+    --lumina-surface-light: #ffffff;
+    --lumina-text-light: #1e293b;
+    --lumina-text-muted-light: #64748b;
+    --lumina-glass-bg-light: rgba(255, 255, 255, 0.7);
+    --lumina-glass-border-light: rgba(255, 255, 255, 0.3);
+    
+    --lumina-bg-dark: #0f172a;
+    --lumina-surface-dark: #1e293b;
+    --lumina-text-dark: #f8fafc;
+    --lumina-text-muted-dark: #94a3b8;
+    --lumina-glass-bg-dark: rgba(30, 41, 59, 0.7);
+    --lumina-glass-border-dark: rgba(255, 255, 255, 0.1);
+
+    --lumina-radius: 12px;
+    --lumina-transition: 0.3s ease;
+}
+
+[data-theme="dark"] {
+    --bg-color: var(--lumina-bg-dark);
+    --surface-color: var(--lumina-surface-dark);
+    --text-color: var(--lumina-text-dark);
+    --text-muted: var(--lumina-text-muted-dark);
+    --glass-bg: var(--lumina-glass-bg-dark);
+    --glass-border: var(--lumina-glass-border-dark);
+}
+
+[data-theme="light"] {
+    --bg-color: var(--lumina-bg-light);
+    --surface-color: var(--lumina-surface-light);
+    --text-color: var(--lumina-text-light);
+    --text-muted: var(--lumina-text-muted-light);
+    --glass-bg: var(--lumina-glass-bg-light);
+    --glass-border: var(--lumina-glass-border-light);
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+    transition: background-color var(--lumina-transition), color var(--lumina-transition);
+    margin: 0;
+    padding: 0;
+}

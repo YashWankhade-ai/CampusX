@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" x-data :data-theme=".theme.mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusX</title>
+    <link href="/static/css/design-system.css" rel="stylesheet">
+    <link href="/static/css/layout.css" rel="stylesheet">
+    <link href="/static/css/components.css" rel="stylesheet">
+    <link href="/static/css/utilities.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar glass-panel">
+            <h2>CampusX</h2>
+            <button @click=".theme.toggle()" class="btn-primary mt-4">Toggle Theme</button>
+            <nav class="mt-4">
+                {% block sidebar %}{% endblock %}
+            </nav>
+        </aside>
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

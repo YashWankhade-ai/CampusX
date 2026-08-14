@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: CampusX API Specification
+  description: RESTful API & AI services for CampusX Smart Campus Learning Platform
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Development Server
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service health status
+  /auth/login:
+    post:
+      summary: User authentication
+      responses:
+        '200':
+          description: JWT access & refresh tokens
+  /resources:
+    get:
+      summary: List study materials
+      responses:
+        '200':
+          description: Paginated study materials list
+    post:
+      summary: Upload new study material
+      responses:
+        '201':
+          description: Material created & sent for approval
+  /ai/chat:
+    post:
+      summary: Stream AI chat response with RAG citations (SSE)
+      responses:
+        '200':
+          description: Server-Sent Events stream
+  /search:
+    get:
+      summary: Hybrid keyword + semantic vector search
+      responses:
+        '200':
+          description: Ranked search results

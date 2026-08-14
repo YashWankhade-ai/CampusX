@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "campusx"
+version = "0.1.0"
+description = "CampusX Backend"
+dependencies = [
+    "Flask>=3.1.0",
+    "Flask-SQLAlchemy>=3.1.0",
+    "SQLAlchemy>=2.0.0",
+    "psycopg2-binary",
+]
