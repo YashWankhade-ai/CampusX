@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 def build_database_uri() -> str:
     """Build PostgreSQL URI from individual environment variables if DATABASE_URL is not set."""
@@ -15,7 +16,8 @@ def build_database_uri() -> str:
     return f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-campusx-2026")
+    # Changed to have NO default in base config. Production will crash if missing (fail-secure).
+    SECRET_KEY = os.environ.get("SECRET_KEY")
     SQLALCHEMY_DATABASE_URI = build_database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -29,17 +31,31 @@ class Config:
     DEBUG = False
     TESTING = False
 
+    # Upload / Storage configuration
+    UPLOAD_DIR = os.environ.get('UPLOAD_DIR', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 100 * 1024 * 1024))  # 100 MB
+    STORAGE_BACKEND = os.environ.get('STORAGE_BACKEND', 'local')  # 'local' or 's3'
+    S3_BUCKET = os.environ.get('S3_BUCKET', '')
+    S3_ENDPOINT_URL = os.environ.get('S3_ENDPOINT_URL', '')
+    S3_REGION = os.environ.get('S3_REGION', 'us-east-1')
+
 class DevelopmentConfig(Config):
     DEBUG = True
     LOG_LEVEL = "DEBUG"
+    # 32+ byte string for dev
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-campusx-2026-very-long-32-bytes")
     SQLALCHEMY_DATABASE_URI = build_database_uri()
 
 class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     LOG_LEVEL = "DEBUG"
+    # 32+ byte string for testing
+    SECRET_KEY = "test-secret-key-campusx-2026-very-long-32-bytes"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_ENGINE_OPTIONS = {}
+    STORAGE_BACKEND = 'local'
+    UPLOAD_DIR = os.path.join(tempfile.gettempdir(), 'campusx_test_uploads')
 
 class ProductionConfig(Config):
     DEBUG = False

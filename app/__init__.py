@@ -42,6 +42,22 @@ def create_app(config_name=None):
     app.register_blueprint(web_bp)
     app.register_blueprint(api_v1_bp)
 
+    # Register Middlewares
+    from .middleware.security_headers import security_headers
+    from .middleware.audit_middleware import audit_middleware
+    from .middleware.tenant_context import tenant_context
+
+    app.after_request(security_headers)
+    app.after_request(audit_middleware)
+    app.before_request(tenant_context)
+
+    try:
+        import flask_limiter
+        from .middleware.rate_limiter import init_rate_limiter
+        init_rate_limiter(app)
+    except ImportError:
+        pass
+
     # Lightweight Liveness Endpoint (Does NOT query database)
     @app.route("/health", methods=["GET"])
     def health_liveness():

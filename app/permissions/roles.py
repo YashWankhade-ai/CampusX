@@ -1,16 +1,23 @@
-class Roles:
+class Role:
     SUPER_ADMIN = "SUPER_ADMIN"
-    ADMIN = "ADMIN"
+    INSTITUTION_ADMIN = "INSTITUTION_ADMIN"
+    MODERATOR = "MODERATOR"
     FACULTY = "FACULTY"
-    DEPARTMENT_COORDINATOR = "DEPARTMENT_COORDINATOR"
-    LIBRARIAN = "LIBRARIAN"
     STUDENT = "STUDENT"
+    GUEST = "GUEST"
 
-ROLES_LIST = [
-    Roles.SUPER_ADMIN,
-    Roles.ADMIN,
-    Roles.FACULTY,
-    Roles.DEPARTMENT_COORDINATOR,
-    Roles.LIBRARIAN,
-    Roles.STUDENT
+ROLE_HIERARCHY = [
+    Role.GUEST,
+    Role.STUDENT,
+    Role.FACULTY,
+    Role.MODERATOR,
+    Role.INSTITUTION_ADMIN,
+    Role.SUPER_ADMIN
 ]
+
+def get_role_level(role: str) -> int:
+    """Return integer level of role, -1 if unknown."""
+    try:
+        return ROLE_HIERARCHY.index(role)
+    except ValueError:
+        return -1

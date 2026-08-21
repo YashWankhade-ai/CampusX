@@ -1,52 +1,108 @@
-import hashlib
-from app.models import FileMetadata, StudyMaterial
+import uuid
+from app.models.resource import StudyMaterial, FileMetadata, MaterialVersion, MaterialType
 from app.extensions import db
-from app.services.storage_service import StorageService
+from app.services.storage_service import get_storage_backend
+from app.utils.file_validator import (
+    validate_file, generate_safe_storage_key, calculate_checksum
+)
 
 class UploadService:
     def __init__(self):
-        self.storage = StorageService()
+        self._storage = None
 
-    def process_upload(self, user_id, file_obj, filename, content_type):
-        is_valid, msg = self.validate_file(file_obj, filename)
+    @property
+    def storage(self):
+        """Lazy-initialize storage backend (requires app context)."""
+        if self._storage is None:
+            self._storage = get_storage_backend()
+        return self._storage
+
+    def upload_resource(
+        self,
+        file,  # werkzeug FileStorage
+        user_id: str,
+        institution_id: str,
+        title: str,
+        description: str = '',
+        subject_id: str = None,
+        resource_type: str = 'NOTE',
+    ) -> dict:
+        """Complete upload flow with validation, storage, and DB persistence."""
+        filename = file.filename
+        content_type = file.content_type
+
+        file.seek(0, 2)
+        file_size = file.tell()
+        file.seek(0)
+
+        # 1. Validate file
+        is_valid, errors = validate_file(filename, file_size, content_type)
         if not is_valid:
-            raise ValueError(msg)
-        
-        file_hash = self.storage.calculate_sha256(file_obj)
-        existing = self.deduplicate_by_hash(file_hash)
-        if existing:
-            return existing
+            raise ValueError(f"File validation failed: {', '.join(errors)}")
 
-        file_obj.seek(0)
-        s3_url = self.storage.upload_file(file_obj, filename, content_type)
-        
-        # Create metadata
-        metadata = FileMetadata(
-            original_filename=filename,
-            content_type=content_type,
-            file_hash=file_hash,
-            storage_url=s3_url,
-            uploader_id=user_id,
-            size_bytes=len(file_obj.read())
-        )
-        db.session.add(metadata)
-        db.session.commit()
-        return metadata
+        try:
+            material_type_enum = MaterialType[resource_type.upper()]
+        except KeyError:
+            material_type_enum = MaterialType.NOTE
 
-    def validate_file(self, file_obj, filename):
-        if not filename:
-            return False, "No filename"
-        file_obj.seek(0, 2)
-        size = file_obj.tell()
-        file_obj.seek(0)
-        if size > 50 * 1024 * 1024:
-            return False, "File too large"
-        return True, "Valid"
+        # 2. Calculate checksum
+        checksum = calculate_checksum(file)
 
-    def deduplicate_by_hash(self, file_hash):
-        return db.session.query(FileMetadata).filter_by(file_hash=file_hash).first()
+        # 3. Generate safe storage key
+        storage_key = generate_safe_storage_key(institution_id, filename)
 
-    def create_upload_request(self, user_id, expected_filename, expected_size):
-        if expected_size > 50 * 1024 * 1024:
-            raise ValueError("Expected size too large")
-        return self.storage.presign_upload_url(expected_filename)
+        # 4. Store file via storage backend
+        stored_key = self.storage.save(file, storage_key)
+
+        try:
+            # 5. Create StudyMaterial record
+            material = StudyMaterial(
+                id=uuid.uuid4(),
+                title=title,
+                description=description,
+                author_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+                material_type=material_type_enum,
+                status="PENDING",  # Requires approval before becoming available
+                subject_id=uuid.UUID(subject_id) if subject_id else None
+            )
+
+            # 6. Create FileMetadata record
+            file_meta = FileMetadata(
+                id=uuid.uuid4(),
+                original_name=filename,
+                mime_type=content_type,
+                size_bytes=file_size,
+                storage_path=stored_key,
+                checksum=checksum
+            )
+
+            material_version = MaterialVersion(
+                id=uuid.uuid4(),
+                study_material_id=material.id,
+                version_number=1,
+                file_metadata_id=file_meta.id,
+                change_summary="Initial upload"
+            )
+
+            db.session.add(material)
+            db.session.add(file_meta)
+            db.session.add(material_version)
+            db.session.commit()
+
+            # 8. Return resource dict
+            return {
+                "id": str(material.id),
+                "title": material.title,
+                "description": material.description,
+                "resource_type": material.material_type.value,
+                "status": material.status,
+                "created_at": material.created_at.isoformat() if material.created_at else None
+            }
+        except Exception as e:
+            # 7. If DB fails, delete stored file (cleanup)
+            db.session.rollback()
+            try:
+                self.storage.delete(stored_key)
+            except Exception:
+                pass # Ignore cleanup errors
+            raise e

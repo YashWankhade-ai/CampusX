@@ -6,7 +6,7 @@ from .approval_service import ApprovalService
 from .download_service import DownloadService
 from .version_service import VersionService
 from .academic_service import AcademicService
-from .storage_service import StorageService
+from .storage_service import StorageBackend, LocalStorageBackend, get_storage_backend
 from .notification_service import NotificationService
 from .analytics_service import AnalyticsService
 from .contribution_service import ContributionService
@@ -23,7 +23,9 @@ __all__ = [
     "DownloadService",
     "VersionService",
     "AcademicService",
-    "StorageService",
+    "StorageBackend",
+    "LocalStorageBackend",
+    "get_storage_backend",
     "NotificationService",
     "AnalyticsService",
     "ContributionService",

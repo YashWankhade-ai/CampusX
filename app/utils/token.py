@@ -8,12 +8,18 @@ from flask import current_app
 logger = logging.getLogger(__name__)
 
 def get_jwt_secret_key() -> str:
-    """Retrieve environment-driven JWT secret key without exposing in source code."""
-    if current_app and current_app.config.get("JWT_SECRET_KEY"):
-        return current_app.config["JWT_SECRET_KEY"]
-    if current_app and current_app.config.get("SECRET_KEY"):
-        return current_app.config["SECRET_KEY"]
-    return os.environ.get("JWT_SECRET_KEY", os.environ.get("SECRET_KEY", "dev-secret-key-campusx-2026"))
+    # Use current app's config first
+    if current_app:
+        if current_app.config.get("JWT_SECRET_KEY"):
+            return current_app.config["JWT_SECRET_KEY"]
+        if current_app.config.get("SECRET_KEY"):
+            return current_app.config["SECRET_KEY"]
+
+    # Fallback to env vars, raising error if not found to fail secure
+    secret = os.environ.get("JWT_SECRET_KEY") or os.environ.get("SECRET_KEY")
+    if not secret:
+        raise RuntimeError("JWT_SECRET_KEY or SECRET_KEY must be set in the environment.")
+    return secret
 
 def generate_access_token(user, expires_in_seconds: int = 900) -> str:
     """
