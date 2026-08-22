@@ -12,8 +12,23 @@ def test_list_resources(client):
     assert json_data["success"] is True
     assert len(json_data["data"]) >= 1
 
-def test_search_api(client):
-    response = client.get("/api/v1/search?q=algorithms")
+def test_search_api(client, app):
+    from app.utils.token import generate_access_token
+    import uuid
+
+    class _User:
+        id = str(uuid.uuid4())
+        role = "STUDENT"
+        institution_id = str(uuid.uuid4())
+        email = "student@test.edu"
+
+    with app.app_context():
+        token = generate_access_token(_User())
+
+    response = client.get(
+        "/api/v1/search?q=algorithms",
+        headers={"Authorization": f"Bearer {token}"}
+    )
     assert response.status_code == 200
     json_data = response.get_json()
     assert json_data["success"] is True

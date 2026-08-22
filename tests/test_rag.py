@@ -35,8 +35,24 @@ def test_bm25_and_rrf_fusion():
     assert len(fused) >= 1
     assert fused[0]["document_id"] == "doc1"
 
-def test_hybrid_search_api_endpoint(client):
-    res = client.get("/api/v1/search?q=Algorithms&limit=5")
+def test_hybrid_search_api_endpoint(client, app):
+    from app.utils.token import generate_access_token
+    import uuid
+
+    class MockSearchUser:
+        def __init__(self):
+            self.id = str(uuid.uuid4())
+            self.role = "STUDENT"
+            self.institution_id = str(uuid.uuid4())
+            self.email = "student@test.edu"
+
+    with app.app_context():
+        token = generate_access_token(MockSearchUser())
+
+    res = client.get(
+        "/api/v1/search?q=Algorithms&limit=5",
+        headers={"Authorization": f"Bearer {token}"}
+    )
     assert res.status_code == 200
     data = res.get_json()
     assert data["success"] is True
