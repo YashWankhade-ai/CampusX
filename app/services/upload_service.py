@@ -6,6 +6,7 @@ from app.utils.file_validator import (
     validate_file, generate_safe_storage_key, calculate_checksum
 )
 
+
 class UploadService:
     def __init__(self):
         self._storage = None
@@ -87,6 +88,27 @@ class UploadService:
             db.session.add(material)
             db.session.add(file_meta)
             db.session.add(material_version)
+
+            # 7. Record analytics + contribution events (flush only — committed below)
+            from app.repositories.analytics_repository import record_event
+            from app.services.contribution_service import record_contribution
+            record_event(
+                event_type="resource.uploaded",
+                user_id=user_id,
+                institution_id=institution_id,
+                event_data={
+                    "resource_id": str(material.id),
+                    "resource_type": resource_type,
+                    "file_size_bytes": file_size,
+                },
+            )
+            record_contribution(
+                user_id=user_id,
+                action="resource_uploaded",
+                resource_id=str(material.id),
+                institution_id=institution_id,
+            )
+
             db.session.commit()
 
             # 8. Return resource dict
@@ -99,10 +121,10 @@ class UploadService:
                 "created_at": material.created_at.isoformat() if material.created_at else None
             }
         except Exception as e:
-            # 7. If DB fails, delete stored file (cleanup)
+            # If DB fails, delete stored file (cleanup)
             db.session.rollback()
             try:
                 self.storage.delete(stored_key)
             except Exception:
-                pass # Ignore cleanup errors
+                pass  # Ignore cleanup errors
             raise e

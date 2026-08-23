@@ -101,6 +101,7 @@ def hybrid_search():
             semester_id=semester_id,
             subject_id=subject_id,
             user_role=user_role,
+            user_id=str(request.user.id) if request.user.id else None,
             limit=limit,
             page=page,
         )

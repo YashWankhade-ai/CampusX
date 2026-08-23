@@ -1,7 +1,19 @@
+import uuid
+import logging
+
 from app.services.upload_service import UploadService
 from app.services.download_service import DownloadService
 from app.services.version_service import VersionService
 from app.repositories.resource_repository import ResourceRepository
+from app.extensions import db
+
+logger = logging.getLogger(__name__)
+
+# Statuses visible to regular users (STUDENT, FACULTY, MODERATOR, etc.)
+PUBLIC_STATUSES = frozenset({"APPROVED"})
+# Statuses additionally visible to the resource author and reviewers
+AUTHOR_VISIBLE_STATUSES = frozenset({"APPROVED", "PENDING", "CHANGES_REQUESTED", "REJECTED"})
+
 
 class ResourceService:
     def __init__(self):
@@ -12,6 +24,78 @@ class ResourceService:
 
     def get_resource(self, resource_id: str):
         return self.repository.get_by_id(resource_id)
+
+    def get_resource_detail(
+        self,
+        resource_id: str,
+        viewer_id: str,
+        viewer_institution_id: str,
+        viewer_role: str,
+    ) -> dict | None:
+        """Return safe resource metadata after enforcing all access rules.
+
+        Rules (in order):
+        1. Resource must exist and not be soft-deleted.
+        2. Institution isolation: resource author must belong to the same institution as viewer.
+        3. Visibility: only APPROVED resources are visible to regular users.
+           The resource author can see their own resource in any status.
+           Roles with resources:approve (MODERATOR, INSTITUTION_ADMIN, SUPER_ADMIN) can see any status.
+        4. Returns a safe dict — NO storage_path, NO file paths.
+
+        Returns None if any check fails (caller returns 404 — never leaks existence).
+        """
+        try:
+            rid = uuid.UUID(resource_id)
+        except (ValueError, TypeError):
+            return None
+
+        from app.models.resource import StudyMaterial
+        from app.models.user import User
+
+        resource = db.session.query(StudyMaterial).filter(
+            StudyMaterial.id == rid,
+            StudyMaterial.is_deleted == False,
+        ).first()
+
+        if not resource:
+            return None
+
+        # ── Institution isolation ────────────────────────────────────────
+        author = db.session.query(User).filter(User.id == resource.author_id).first()
+        if not author:
+            return None
+
+        try:
+            viewer_iid = uuid.UUID(viewer_institution_id) if viewer_institution_id else None
+        except (ValueError, TypeError):
+            viewer_iid = None
+
+        if author.institution_id != viewer_iid:
+            # Fail closed — treat as not found, never reveal cross-institution data
+            return None
+
+        # ── Visibility enforcement ───────────────────────────────────────
+        is_own_resource = str(resource.author_id) == str(viewer_id)
+        can_approve = viewer_role in ("MODERATOR", "INSTITUTION_ADMIN", "SUPER_ADMIN")
+
+        if resource.status not in PUBLIC_STATUSES:
+            # Non-approved resources: only author and reviewers may see them
+            if not (is_own_resource or can_approve):
+                return None
+
+        # ── Safe metadata dict — NO storage paths, NO internal paths ────
+        return {
+            "id": str(resource.id),
+            "title": resource.title,
+            "description": resource.description,
+            "status": resource.status,
+            "material_type": resource.material_type.value,
+            "author_id": str(resource.author_id),
+            "subject_id": str(resource.subject_id) if resource.subject_id else None,
+            "topic_id": str(resource.topic_id) if resource.topic_id else None,
+            "created_at": resource.created_at.isoformat() if resource.created_at else None,
+            "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
+        }
 
     def list_resources(self, page: int = 1, limit: int = 20, subject_id: str = None, category_id: str = None, sort_by: str = "created_at", search: str = None):
         return self.repository.list_paginated(

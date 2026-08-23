@@ -67,11 +67,55 @@ def upload_resource():
         return error_response(code="STORAGE_ERROR", message=str(e), status_code=500)
 
 @resources_bp.route('/<resource_id>', methods=['GET'], strict_slashes=False)
+@require_auth
 def get_resource(resource_id):
-    resource = resource_service.get_resource(resource_id)
-    if not resource:
+    """Return resource metadata.
+
+    Security:
+    - Requires authentication (resources:read enforced via @require_auth;
+      all authenticated roles have resources:read per ROLE_PERMISSIONS).
+    - Institution isolation: author's institution must match viewer's JWT institution.
+    - Visibility: only APPROVED resources visible to regular users.
+      Authors see their own resource in any status.
+      MODERATOR/ADMIN roles see any status within their institution.
+    - resource.viewed recorded only on successful, authorised access.
+    - Storage paths are never returned.
+    """
+    viewer_id = str(request.user.id)
+    viewer_institution_id = str(request.user.institution_id) if request.user.institution_id else None
+    viewer_role = request.user.role
+
+    detail = resource_service.get_resource_detail(
+        resource_id=resource_id,
+        viewer_id=viewer_id,
+        viewer_institution_id=viewer_institution_id,
+        viewer_role=viewer_role,
+    )
+
+    if not detail:
+        # Fail closed — 404 for not-found, wrong institution, or unauthorized status
         return error_response(code="NOT_FOUND", message="Resource not found", status_code=404)
-    return success_response(data=resource)
+
+    # Record resource.viewed only after all checks pass
+    try:
+        from app.repositories.analytics_repository import record_event, record_resource_view
+        from app.extensions import db as _db
+        record_event(
+            event_type="resource.viewed",
+            user_id=viewer_id,
+            institution_id=viewer_institution_id,
+            event_data={"resource_id": resource_id},
+        )
+        record_resource_view(
+            resource_id=resource_id,
+            user_id=viewer_id,
+            institution_id=viewer_institution_id,
+        )
+        _db.session.commit()
+    except Exception:
+        pass  # Analytics failure must not affect the primary response
+
+    return success_response(data=detail)
 
 @resources_bp.route('/<resource_id>/download', methods=['GET'], strict_slashes=False)
 @require_auth

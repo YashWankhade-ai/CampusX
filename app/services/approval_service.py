@@ -129,6 +129,27 @@ class ApprovalService:
             db.session.rollback()
             raise ValueError("Failed to process approval")
 
+        # Record analytics + contribution events — outside try-except so approval is not rolled back on analytics failure
+        try:
+            from app.repositories.analytics_repository import record_event
+            from app.services.contribution_service import record_contribution
+            record_event(
+                event_type="resource.approved",
+                user_id=reviewer_id,
+                institution_id=str(reviewer_institution_id),
+                event_data={"resource_id": str(resource.id)},
+            )
+            # Credit the resource author for having their resource approved
+            record_contribution(
+                user_id=str(resource.author_id),
+                action="resource_approved",
+                resource_id=str(resource.id),
+                institution_id=str(reviewer_institution_id),
+            )
+            db.session.commit()
+        except Exception:
+            pass  # Analytics failure must not affect the primary operation
+
         return {
             "resource_id": str(resource.id),
             "title": resource.title,
@@ -185,6 +206,19 @@ class ApprovalService:
             db.session.rollback()
             raise ValueError("Failed to process rejection")
 
+        # Record analytics event — outside try-except so rejection is not rolled back on analytics failure
+        try:
+            from app.repositories.analytics_repository import record_event
+            record_event(
+                event_type="resource.rejected",
+                user_id=reviewer_id,
+                institution_id=str(reviewer_institution_id),
+                event_data={"resource_id": str(resource.id)},
+            )
+            db.session.commit()
+        except Exception:
+            pass  # Analytics failure must not affect the primary operation
+
         return {
             "resource_id": str(resource.id),
             "title": resource.title,
@@ -240,6 +274,19 @@ class ApprovalService:
         except Exception:
             db.session.rollback()
             raise ValueError("Failed to process change request")
+
+        # Record analytics event — outside try-except
+        try:
+            from app.repositories.analytics_repository import record_event
+            record_event(
+                event_type="resource.changes_requested",
+                user_id=reviewer_id,
+                institution_id=str(reviewer_institution_id),
+                event_data={"resource_id": str(resource.id)},
+            )
+            db.session.commit()
+        except Exception:
+            pass  # Analytics failure must not affect the primary operation
 
         return {
             "resource_id": str(resource.id),

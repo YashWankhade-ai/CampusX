@@ -76,6 +76,7 @@ class SearchService:
         semester_id: Optional[str] = None,
         subject_id: Optional[str] = None,
         user_role: Optional[str] = None,
+        user_id: Optional[str] = None,
         limit: int = 10,
         page: int = 1,
     ) -> List[Dict[str, Any]]:
@@ -120,8 +121,26 @@ class SearchService:
         # Apply pagination offset (results already limited by RAGService)
         offset = (page - 1) * limit
         paged = raw_results[offset:offset + limit]
+        results = [_safe_result(r) for r in paged]
 
-        return [_safe_result(r) for r in paged]
+        # Record search event — only result count and query length, NOT the raw query (privacy)
+        try:
+            from app.repositories.analytics_repository import record_event
+            record_event(
+                event_type="search.performed",
+                user_id=user_id,
+                institution_id=institution_id,
+                event_data={
+                    "query_length": len(query),
+                    "result_count": len(results),
+                },
+            )
+            from app.extensions import db
+            db.session.commit()
+        except Exception:
+            pass  # Analytics failure must not break search
+
+        return results
 
     def autocomplete(self, query: str) -> List[str]:
         """Return autocomplete suggestions (static for now — not production Qdrant)."""
