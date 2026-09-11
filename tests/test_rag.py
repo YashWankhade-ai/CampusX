@@ -59,11 +59,13 @@ def test_hybrid_search_api_endpoint(client, app):
     assert "meta" in data
     assert data["meta"]["query"] == "Algorithms"
 
-def test_celery_indexing_background_task():
-    # Test execution of Celery background task
-    res = index_document_task.delay(
-        material_id="00000000-0000-0000-0000-000000000000",
-        file_path="non_existent_sample.pdf",
-        metadata={"title": "Test Material"}
-    )
+def test_celery_indexing_background_task(app):
+    """Verify the indexing task handles a non-existent material_id without raising."""
+    # Signature changed in Sprint 15: file_path removed (task reads from DB instead).
+    # A non-existent material_id should return FAILED status, not raise.
+    with app.app_context():
+        res = index_document_task.delay(
+            material_id="00000000-0000-0000-0000-000000000000",
+            metadata={"title": "Test Material"},
+        )
     assert res is not None

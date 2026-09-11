@@ -77,14 +77,21 @@ class AIClients:
         system_prompt: str = "",
         model: str = "claude-3-5-sonnet-20241022",
         temperature: float = 0.7,
-        enable_tools: bool = True
+        enable_tools: bool = True,
+        institution_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Call Anthropic Claude Sonnet with tool calling, fallback to OpenAI if failed.
+        institution_id is threaded through to execute_tool for institution-scoped searches.
         """
         if not self.anthropic_client or not self.circuit_breaker.can_execute():
-            logger.warning("Anthropic client unavailable or circuit breaker open. Falling back to OpenAI GPT-4o-mini.")
-            return await self.call_openai(messages=messages, system_prompt=system_prompt, enable_tools=enable_tools)
+            logger.warning("Anthropic client unavailable or circuit breaker open. Falling back to OpenAI.")
+            return await self.call_openai(
+                messages=messages,
+                system_prompt=system_prompt,
+                enable_tools=enable_tools,
+                institution_id=institution_id,
+            )
 
         try:
             kwargs = {
@@ -112,7 +119,7 @@ class AIClients:
                 if block.type == "text":
                     content_text += block.text
                 elif block.type == "tool_use":
-                    tool_result = execute_tool(block.name, block.input)
+                    tool_result = execute_tool(block.name, block.input, institution_id=institution_id)
                     tool_calls_executed.append({
                         "name": block.name,
                         "args": block.input,
@@ -135,8 +142,13 @@ class AIClients:
 
         except Exception as e:
             self.circuit_breaker.record_failure()
-            logger.error(f"Claude API Call Error: {e}. Executing fallback to OpenAI GPT-4o-mini.")
-            return await self.call_openai(messages=messages, system_prompt=system_prompt, enable_tools=enable_tools)
+            logger.error("Claude API call error: %s — falling back to OpenAI", type(e).__name__)
+            return await self.call_openai(
+                messages=messages,
+                system_prompt=system_prompt,
+                enable_tools=enable_tools,
+                institution_id=institution_id,
+            )
 
     async def call_openai(
         self,
@@ -144,10 +156,12 @@ class AIClients:
         system_prompt: str = "",
         model: str = "gpt-4o-mini",
         temperature: float = 0.7,
-        enable_tools: bool = True
+        enable_tools: bool = True,
+        institution_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Call OpenAI GPT-4o-mini with fallback handling.
+        institution_id is threaded through to execute_tool for institution-scoped searches.
         """
         if not self.openai_client:
             # Fallback mock for offline/testing environments without API key
@@ -180,7 +194,7 @@ class AIClients:
                 for tc in choice.tool_calls:
                     fn_name = tc.function.name
                     fn_args = json.loads(tc.function.arguments or "{}")
-                    tool_res = execute_tool(fn_name, fn_args)
+                    tool_res = execute_tool(fn_name, fn_args, institution_id=institution_id)
                     tool_calls_executed.append({"name": fn_name, "args": fn_args, "result": tool_res})
                     content_text += f"\n\n[Tool Executed: {fn_name}]\nResult: {json.dumps(tool_res, indent=2)}\n"
 
@@ -198,7 +212,7 @@ class AIClients:
             }
 
         except Exception as e:
-            logger.error(f"OpenAI API Call Error: {e}. Using intelligent fallback generator.")
+            logger.error("OpenAI API call error: %s — using mock fallback", type(e).__name__)
             return self._generate_mock_response(messages, system_prompt, model)
 
     async def stream_chat(
@@ -239,7 +253,7 @@ class AIClients:
                 )
                 return res.data[0].embedding
             except Exception as e:
-                logger.warning(f"OpenAI embedding API notice: {e}")
+                logger.warning("OpenAI embedding API notice: %s", type(e).__name__)
 
         # Deterministic 3072-dimensional vector fallback for testing/offline environments
         import hashlib

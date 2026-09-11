@@ -14,6 +14,9 @@ from .qr import qr_bp
 from .approvals import approvals_bp
 from .contributions import contributions_bp
 from .settings import settings_bp
+from .admin import admin_bp
+from .student import student_bp
+from .faculty import faculty_bp
 
 api_v1_bp.register_blueprint(auth_bp, url_prefix="/auth")
 api_v1_bp.register_blueprint(resources_bp, url_prefix="/resources")
@@ -27,3 +30,6 @@ api_v1_bp.register_blueprint(qr_bp, url_prefix="/qr")
 api_v1_bp.register_blueprint(approvals_bp, url_prefix="/approvals")
 api_v1_bp.register_blueprint(contributions_bp, url_prefix="/contributions")
 api_v1_bp.register_blueprint(settings_bp, url_prefix="/settings")
+api_v1_bp.register_blueprint(admin_bp, url_prefix="/admin")
+api_v1_bp.register_blueprint(student_bp, url_prefix="/student")
+api_v1_bp.register_blueprint(faculty_bp, url_prefix="/faculty")

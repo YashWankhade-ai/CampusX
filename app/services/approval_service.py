@@ -150,6 +150,38 @@ class ApprovalService:
         except Exception:
             pass  # Analytics failure must not affect the primary operation
 
+        # Notify the resource author — outside analytics block so each is independent
+        try:
+            from app.services.notification_service import notify_resource_approved
+            notify_resource_approved(
+                resource_id=str(resource.id),
+                resource_title=resource.title,
+                author_id=str(resource.author_id),
+                institution_id=str(reviewer_institution_id),
+            )
+        except Exception:
+            pass  # Notification failure must not affect the primary operation
+
+        # Dispatch document indexing task — AFTER commit so the task sees the APPROVED state.
+        # Failure to dispatch must NOT corrupt the approval transaction (try/except).
+        # institution_id is re-fetched inside the task from the DB for tamper-resistance.
+        try:
+            from app.tasks.indexing import index_document_task
+            index_document_task.delay(
+                material_id=str(resource.id),
+                metadata={
+                    # Hint metadata only — task re-validates institution_id from DB
+                    "subject_id": str(resource.subject_id) if resource.subject_id else "",
+                    "material_type": (
+                        resource.material_type.value
+                        if hasattr(resource.material_type, "value")
+                        else str(resource.material_type)
+                    ),
+                },
+            )
+        except Exception:
+            pass  # Dispatch failure must not affect the approval result
+
         return {
             "resource_id": str(resource.id),
             "title": resource.title,
@@ -219,6 +251,35 @@ class ApprovalService:
         except Exception:
             pass  # Analytics failure must not affect the primary operation
 
+        # Notify the resource author
+        try:
+            from app.services.notification_service import notify_resource_rejected
+            notify_resource_rejected(
+                resource_id=str(resource.id),
+                resource_title=resource.title,
+                author_id=str(resource.author_id),
+                institution_id=str(reviewer_institution_id),
+                reason=reason or "",
+            )
+        except Exception:
+            pass  # Notification failure must not affect the primary operation
+
+        # Remove any Qdrant vectors that were previously indexed for this resource.
+        # If the document was APPROVED before and indexed, those vectors must be cleared.
+        # Failure is non-fatal — stale vectors will be filtered out by is_approved=False
+        # if the payload is updated, but deletion is preferred for storage hygiene.
+        try:
+            import asyncio as _asyncio
+            from app.services.ai.qdrant_service import QdrantService
+            _qs = QdrantService()
+            _loop = _asyncio.new_event_loop()
+            try:
+                _loop.run_until_complete(_qs.delete_chunks_for_document(str(resource.id)))
+            finally:
+                _loop.close()
+        except Exception:
+            pass  # Qdrant cleanup failure must not affect the rejection result
+
         return {
             "resource_id": str(resource.id),
             "title": resource.title,
@@ -287,6 +348,19 @@ class ApprovalService:
             db.session.commit()
         except Exception:
             pass  # Analytics failure must not affect the primary operation
+
+        # Notify the resource author
+        try:
+            from app.services.notification_service import notify_resource_changes_requested
+            notify_resource_changes_requested(
+                resource_id=str(resource.id),
+                resource_title=resource.title,
+                author_id=str(resource.author_id),
+                institution_id=str(reviewer_institution_id),
+                feedback=feedback or "",
+            )
+        except Exception:
+            pass  # Notification failure must not affect the primary operation
 
         return {
             "resource_id": str(resource.id),

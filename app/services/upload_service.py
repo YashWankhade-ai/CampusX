@@ -112,7 +112,7 @@ class UploadService:
             db.session.commit()
 
             # 8. Return resource dict
-            return {
+            result = {
                 "id": str(material.id),
                 "title": material.title,
                 "description": material.description,
@@ -128,3 +128,30 @@ class UploadService:
             except Exception:
                 pass  # Ignore cleanup errors
             raise e
+
+        # 9. Notify moderators/admins — outside the transaction so failure never rolls back the upload
+        try:
+            from app.services.notification_service import notify_resource_uploaded
+            from app.models.user import User
+            roles_to_notify = ("MODERATOR", "INSTITUTION_ADMIN", "SUPER_ADMIN")
+            if institution_id:
+                import uuid as _uuid
+                moderator_ids = [
+                    str(u.id) for u in db.session.query(User).filter(
+                        User.institution_id == _uuid.UUID(institution_id),
+                        User.role.in_(roles_to_notify),
+                        User.is_deleted == False,
+                    ).all()
+                ]
+            else:
+                moderator_ids = []
+            notify_resource_uploaded(
+                resource_id=result["id"],
+                resource_title=title,
+                uploader_institution_id=institution_id or "",
+                moderator_ids=moderator_ids,
+            )
+        except Exception:
+            pass  # Notification failure must not affect the upload result
+
+        return result
