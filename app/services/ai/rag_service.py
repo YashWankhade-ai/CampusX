@@ -88,6 +88,8 @@ class RAGService:
         department_id: Optional[str] = None,
         semester_id: Optional[str] = None,
         subject_id: Optional[str] = None,
+        document_id: Optional[str] = None,
+        document_ids: Optional[List[str]] = None,
         user_role: Optional[str] = None,
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
@@ -98,10 +100,16 @@ class RAGService:
             - Dense search: Qdrant filters institution_id + approved_only + not deleted.
             - Sparse search: BM25 corpus filtered by institution via User join.
             - Cross-institution candidates are eliminated before RRF merging.
+            - When document_id is set, retrieval is scoped to that single document
+              (PDF Chat mode). institution_id filter is still enforced.
+            - When document_ids is set, retrieval is scoped to those documents
+              (Multi-PDF Chat mode). institution_id filter is still enforced.
 
         Args:
             query: User question string.
             institution_id: From JWT. Mandatory for production use.
+            document_id: Optional. When set, retrieval is scoped to a single document.
+            document_ids: Optional. When set, retrieval is scoped to multiple documents.
             limit: Maximum number of fused results returned.
 
         Returns:
@@ -121,6 +129,8 @@ class RAGService:
                 department_id=department_id,
                 semester_id=semester_id,
                 subject_id=subject_id,
+                document_id=document_id,        # single-document (PDF Chat)
+                document_ids=document_ids,       # multi-document (Multi-PDF Chat)
                 user_role=user_role,
                 limit=limit * 2,
             )
@@ -131,6 +141,8 @@ class RAGService:
         # ── 2. Sparse BM25 corpus — institution-scoped, approved-only ──────────
         #    institution_id comes from JWT (set by blueprint) — not from client.
         #    Join path: StudyMaterial.author_id → User.institution_id
+        #    When document_id is set (PDF chat), BM25 is restricted to that document.
+        #    When document_ids is set (Multi-PDF chat), BM25 is restricted to those documents.
         sparse_docs: List[Dict[str, Any]] = []
         try:
             from app.models.user import User  # deferred to avoid circular import
@@ -153,6 +165,28 @@ class RAGService:
                         "[RAG] Invalid institution_id format — BM25 corpus empty (fail closed)"
                     )
                     db_query = db_query.filter(False)  # Fail closed
+
+            # Multi-document takes precedence over single document_id
+            if document_ids:
+                # Multi-PDF Chat mode — restrict BM25 corpus to selected documents
+                valid_doc_uuids = []
+                for did in document_ids:
+                    try:
+                        valid_doc_uuids.append(uuid.UUID(str(did)))
+                    except (ValueError, TypeError):
+                        logger.warning("[RAG] Invalid document_id in document_ids — skipping: %s", type(did).__name__)
+                if valid_doc_uuids:
+                    db_query = db_query.filter(StudyMaterial.id.in_(valid_doc_uuids))
+                else:
+                    db_query = db_query.filter(False)  # All invalid → fail closed
+            elif document_id:
+                # PDF chat mode — restrict BM25 corpus to the single document
+                try:
+                    doc_uuid = uuid.UUID(str(document_id))
+                    db_query = db_query.filter(StudyMaterial.id == doc_uuid)
+                except (ValueError, TypeError):
+                    logger.warning("[RAG] Invalid document_id format — BM25 corpus empty (fail closed)")
+                    db_query = db_query.filter(False)
 
             if subject_id:
                 try:
@@ -214,6 +248,8 @@ class RAGService:
         query: str,
         institution: str = "",
         subject: str = "",
+        document_id: Optional[str] = None,
+        document_ids: Optional[List[str]] = None,
         user_role: Optional[str] = None,
         limit: int = 5,
     ) -> Tuple[str, List[Dict[str, Any]]]:
@@ -225,6 +261,8 @@ class RAGService:
             - Raw document_id is NOT included in context_text (avoid leaking DB IDs).
             - Title and chunk_index are used for attribution instead.
             - An empty retrieval returns ("", []) safely.
+            - When document_id is set, context is scoped to that document (PDF chat).
+            - When document_ids is set, context is scoped to those documents (Multi-PDF).
 
         Returns:
             (context_text, citations) where:
@@ -235,9 +273,12 @@ class RAGService:
             query=query,
             institution_id=institution or None,
             subject_id=subject or None,
+            document_id=document_id or None,
+            document_ids=document_ids or None,
             user_role=user_role,
             limit=limit,
         )
+
         if not results:
             return "", []
 

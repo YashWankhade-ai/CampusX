@@ -107,6 +107,8 @@ class QdrantService:
         department_id: Optional[str] = None,
         semester_id: Optional[str] = None,
         subject_id: Optional[str] = None,
+        document_id: Optional[str] = None,
+        document_ids: Optional[List[str]] = None,
         user_role: Optional[str] = None,
         limit: int = 10,
         approved_only: bool = True,
@@ -118,6 +120,12 @@ class QdrantService:
             - institution_id must come from JWT (caller responsibility).
             - approved_only=True by default — only APPROVED documents are returned.
             - exclude_deleted=True by default — soft-deleted documents are excluded.
+
+        document_id vs document_ids:
+            - document_id: single-document scoping (existing PDF Chat / Study Tools).
+            - document_ids: multi-document scoping (Multi-PDF Chat). Qdrant MatchAny.
+            - Only one of document_id/document_ids should be set. If both are set,
+              document_ids takes precedence.
         """
         if not QDRANT_AVAILABLE:
             return []
@@ -132,6 +140,18 @@ class QdrantService:
                 filters.append(FieldCondition(key="semester_id", match=MatchValue(value=str(semester_id))))
             if subject_id:
                 filters.append(FieldCondition(key="subject_id", match=MatchValue(value=str(subject_id))))
+
+            # Multi-document filter takes precedence over single document_id
+            if document_ids:
+                # Multi-PDF Chat: restrict to any of the selected document IDs
+                filters.append(FieldCondition(
+                    key="document_id",
+                    match=MatchAny(any=[str(d) for d in document_ids]),
+                ))
+            elif document_id:
+                # Single PDF Chat: restrict to one specific document
+                filters.append(FieldCondition(key="document_id", match=MatchValue(value=str(document_id))))
+
             if user_role and user_role.upper() != "SUPER_ADMIN":
                 filters.append(FieldCondition(key="allowed_roles", match=MatchAny(any=[user_role.upper()])))
             # Approval and deletion filters — always enforced by default

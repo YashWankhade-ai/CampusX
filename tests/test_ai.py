@@ -43,6 +43,15 @@ def test_ai_session_and_chat_flow(client):
     assert len(messages) >= 2 # 1 user message + 1 AI message
 
 def test_ai_summarization(client):
+    """Summarize route now requires resource_id (grounded, Cycle 3).
+
+    This test verifies:
+    - Auth passes for a FACULTY user
+    - Sending the old text= body without resource_id correctly returns 400
+    - No crash or 500 error
+
+    Full grounded summary tests are in tests/test_cycle3.py.
+    """
     client.post("/api/v1/auth/register", json={
         "email": "aifaculty@campusx.edu",
         "password": "Password123!",
@@ -58,9 +67,14 @@ def test_ai_summarization(client):
     token = login_res.get_json()["data"]["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
+    # Old text= body no longer accepted — route now requires resource_id
     sum_res = client.post("/api/v1/ai/summarize", json={
-        "text": "Dynamic programming is an algorithmic technique for solving optimization problems by breaking them down into simpler subproblems and storing the results to avoid redundant calculations."
+        "text": "Dynamic programming is an algorithmic technique."
     }, headers=headers)
 
-    assert sum_res.status_code == 200
-    assert "summary" in sum_res.get_json()["data"]
+    # Correct behaviour: 400 VALIDATION_ERROR (resource_id missing)
+    assert sum_res.status_code == 400
+    resp_json = sum_res.get_json()
+    # CampusX error envelope: {"error": {"code": "VALIDATION_ERROR", ...}}
+    assert resp_json.get("error", {}).get("code") == "VALIDATION_ERROR" or \
+           resp_json.get("code") == "VALIDATION_ERROR"

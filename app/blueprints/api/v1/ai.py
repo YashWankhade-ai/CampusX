@@ -52,6 +52,8 @@ except ImportError:
 
 # Lazy-loaded services — avoid import-time failures when optional deps absent
 _chat_service = None
+_pdf_chat_service = None
+_study_tools_service = None
 
 
 def _get_chat_service():
@@ -60,6 +62,22 @@ def _get_chat_service():
         from app.services.ai.chat_service import ChatService
         _chat_service = ChatService()
     return _chat_service
+
+
+def _get_pdf_chat_service():
+    global _pdf_chat_service
+    if _pdf_chat_service is None:
+        from app.services.ai.pdf_chat_service import PDFChatService
+        _pdf_chat_service = PDFChatService()
+    return _pdf_chat_service
+
+
+def _get_study_tools_service():
+    global _study_tools_service
+    if _study_tools_service is None:
+        from app.services.ai.study_tools_service import StudyToolsService
+        _study_tools_service = StudyToolsService()
+    return _study_tools_service
 
 
 # ── Input validation constants ─────────────────────────────────────────────────
@@ -378,24 +396,85 @@ def chat_stream():
         return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
 
 
-# ── Phase 2 endpoints — retained for backward compatibility, gated ─────────────
+# ── Study Tool Endpoints — Quiz, Flashcard, Summary (Cycle 3) ─────────────────
+#
+# All three routes follow the same security contract:
+#   1. JWT required (@require_auth)
+#   2. ai:use permission required (@require_permission)
+#   3. resource_id validated: existence + APPROVED + not deleted + same institution
+#   4. institution_id from JWT ONLY — never from request body
+#   5. Generation grounded via RAGService(document_id=...) — DATA fence applied
+#   6. LLM output validated before returning — malformed output → safe error
+#   7. No exception details / tracebacks / API keys in responses
+#
+# /api/v1/ai/quiz/generate
+# /api/v1/ai/flashcards/generate
+# /api/v1/ai/summarize
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _resolve_resource(payload, institution_id):
+    """Shared resource_id validation helper for study tool routes.
+
+    Returns (StudyMaterial, None) on success or (None, flask_response) on failure.
+    institution_id MUST come from the JWT — this function does not read it from payload.
+    """
+    import uuid as _uuid
+    resource_id = (payload.get('resource_id') or '').strip()
+    if not resource_id:
+        return None, error_response(
+            code="VALIDATION_ERROR",
+            message="resource_id is required",
+            status_code=400,
+        )
+
+    svc = _get_study_tools_service()
+    resource, err = svc.validate_resource(resource_id, institution_id)
+
+    if err == "INVALID_ID":
+        return None, error_response(code="VALIDATION_ERROR", message="Invalid resource_id format", status_code=400)
+    if err == "NOT_FOUND":
+        return None, error_response(code="NOT_FOUND", message="Resource not found", status_code=404)
+    if err == "NOT_APPROVED":
+        return None, error_response(
+            code="NOT_APPROVED",
+            message="This resource has not been approved and cannot be used for study tools.",
+            status_code=422,
+        )
+    return resource, None
+
 
 @ai_bp.route('/summarize', methods=['POST'])
 @require_auth
 @require_permission('ai:use')
 def summarize():
-    """Text summarization. Phase 2 feature — retained for backward compatibility."""
-    text = (request.get_json(silent=True) or {}).get('text', '').strip()
-    if not text:
-        return error_response(code="VALIDATION_ERROR", message="Text content required for summarization", status_code=400)
-    if len(text) > 20000:
-        return error_response(code="VALIDATION_ERROR", message="Text too long for summarization", status_code=400)
+    """Grounded document summary.
+
+    Request body:
+        { "resource_id": "<uuid>" }
+
+    Response:
+        200: { "success": true, "resource_id", "resource_title", "summary", "sources" }
+        400: Missing/invalid resource_id
+        404: Resource not found
+        422: Resource not approved
+    """
+    payload = request.get_json(silent=True) or {}
+    institution_id = str(request.user.institution_id) if request.user.institution_id else None
+
+    resource, err_resp = _resolve_resource(payload, institution_id)
+    if err_resp is not None:
+        return err_resp
 
     try:
-        from app.services.ai.summary_service import SummaryService
-        svc = SummaryService()
-        summary = _run_async(svc.summarize(text))
-        return success_response(data={"summary": summary}, message="Summary generated successfully")
+        svc = _get_study_tools_service()
+        result = _run_async(svc.generate_summary(
+            resource_id=str(resource.id),
+            institution_id=institution_id,
+            resource_title=resource.title,
+        ))
+        if not result.get("success"):
+            return error_response(code=result.get("error", "AI_ERROR"), message=result.get("message", _SAFE_AI_ERROR), status_code=422)
+        return success_response(data=result, message="Summary generated successfully")
     except Exception as e:
         logger.error("Summarize error: %s", type(e).__name__, exc_info=False)
         return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
@@ -405,16 +484,45 @@ def summarize():
 @require_auth
 @require_permission('ai:use')
 def generate_quiz():
-    """Quiz generation. Phase 2 feature — retained for backward compatibility."""
+    """Grounded multiple-choice quiz generator.
+
+    Request body:
+        { "resource_id": "<uuid>", "num_questions": 5 }
+
+    num_questions is clamped server-side to [1, MAX_QUIZ_QUESTIONS].
+
+    Response:
+        200: { "success": true, "resource_id", "resource_title", "topic",
+               "questions": [...], "question_count", "sources" }
+        400: Missing/invalid resource_id
+        404: Resource not found
+        422: Resource not approved or malformed LLM output
+    """
+    from app.services.ai.prompt_templates import MAX_QUIZ_QUESTIONS as _MAX_Q
     payload = request.get_json(silent=True) or {}
-    topic = (payload.get('topic') or payload.get('text') or 'General Knowledge').strip()
-    num_questions = min(int(payload.get('num_questions', 5)), 20)
+    institution_id = str(request.user.institution_id) if request.user.institution_id else None
+
+    resource, err_resp = _resolve_resource(payload, institution_id)
+    if err_resp is not None:
+        return err_resp
 
     try:
-        from app.services.ai.quiz_service import QuizService
-        svc = QuizService()
-        quiz = _run_async(svc.generate_quiz(topic, num_questions))
-        return success_response(data=quiz, message="Quiz generated successfully")
+        num_questions = int(payload.get('num_questions', 5))
+    except (TypeError, ValueError):
+        num_questions = 5
+    num_questions = max(1, min(num_questions, _MAX_Q))
+
+    try:
+        svc = _get_study_tools_service()
+        result = _run_async(svc.generate_quiz(
+            resource_id=str(resource.id),
+            institution_id=institution_id,
+            resource_title=resource.title,
+            num_questions=num_questions,
+        ))
+        if not result.get("success"):
+            return error_response(code=result.get("error", "AI_ERROR"), message=result.get("message", _SAFE_AI_ERROR), status_code=422)
+        return success_response(data=result, message="Quiz generated successfully")
     except Exception as e:
         logger.error("Quiz generation error: %s", type(e).__name__, exc_info=False)
         return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
@@ -424,16 +532,355 @@ def generate_quiz():
 @require_auth
 @require_permission('ai:use')
 def generate_flashcards():
-    """Flashcard generation. Phase 2 feature — retained for backward compatibility."""
+    """Grounded flashcard generator.
+
+    Request body:
+        { "resource_id": "<uuid>", "num_cards": 10 }
+
+    num_cards is clamped server-side to [1, MAX_FLASHCARD_COUNT].
+
+    Response:
+        200: { "success": true, "resource_id", "resource_title",
+               "flashcards": [...], "card_count", "sources" }
+        400: Missing/invalid resource_id
+        404: Resource not found
+        422: Resource not approved or malformed LLM output
+    """
+    from app.services.ai.prompt_templates import MAX_FLASHCARD_COUNT as _MAX_C
     payload = request.get_json(silent=True) or {}
-    text = (payload.get('text') or payload.get('topic') or 'General Topics').strip()
-    num_cards = min(int(payload.get('num_cards', 5)), 20)
+    institution_id = str(request.user.institution_id) if request.user.institution_id else None
+
+    resource, err_resp = _resolve_resource(payload, institution_id)
+    if err_resp is not None:
+        return err_resp
 
     try:
-        from app.services.ai.flashcard_service import FlashcardService
-        svc = FlashcardService()
-        flashcards = _run_async(svc.generate_flashcards(text, num_cards))
-        return success_response(data=flashcards, message="Flashcards generated successfully")
+        num_cards = int(payload.get('num_cards', 10))
+    except (TypeError, ValueError):
+        num_cards = 10
+    num_cards = max(1, min(num_cards, _MAX_C))
+
+    try:
+        svc = _get_study_tools_service()
+        result = _run_async(svc.generate_flashcards(
+            resource_id=str(resource.id),
+            institution_id=institution_id,
+            resource_title=resource.title,
+            num_cards=num_cards,
+        ))
+        if not result.get("success"):
+            return error_response(code=result.get("error", "AI_ERROR"), message=result.get("message", _SAFE_AI_ERROR), status_code=422)
+        return success_response(data=result, message="Flashcards generated successfully")
     except Exception as e:
         logger.error("Flashcards error: %s", type(e).__name__, exc_info=False)
+        return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PDF Chat Endpoints — single-PDF Chat (Cycle 2) + Multi-PDF Chat (Cycle 4)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# POST /api/v1/ai/pdf/sessions        — start single-PDF or Multi-PDF session
+# POST /api/v1/ai/pdf/chat            — send a message (auto-routes single/multi)
+# GET  /api/v1/ai/pdf/sessions/<id>   — get session history (single or multi)
+#
+# Session type routing:
+#   context_data.session_type == "pdf_chat"        → single-PDF pipeline
+#   context_data.session_type == "multi_pdf_chat"  → Multi-PDF pipeline
+#
+# Security (all sessions):
+#   - resource_id / resource_ids validated at every request.
+#   - institution_id always from JWT — never from request body.
+#   - Cross-institution resources → 404 (fail closed, no existence leakage).
+#   - Mixed authorized + unauthorized resource lists → 422 (entire request rejected).
+#   - Only APPROVED, not-deleted resources can be chatted with.
+#   - All resources revalidated on each chat message (handles post-session changes).
+#   - IDOR: session ownership verified on every access.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_MAX_MULTI_PDF = 10  # mirrors PDFChatService.MAX_MULTI_PDF_RESOURCES
+
+
+@ai_bp.route('/pdf/sessions', methods=['POST'])
+@require_auth
+@require_permission('ai:use')
+def start_pdf_session():
+    """Start a PDF chat session — single-PDF or Multi-PDF.
+
+    Single-PDF request body:
+        { "resource_id": "<uuid>" }
+
+    Multi-PDF request body:
+        { "resource_ids": ["<uuid1>", "<uuid2>", ...] }   (1–10 resources)
+
+    Both forms are accepted. If resource_ids is present (list), Multi-PDF session
+    is created. If only resource_id is present, a single-PDF session is created.
+
+    Response (single-PDF):
+        201: { "session_id", "session_type": "pdf_chat",
+               "resource_id", "resource_title", "title" }
+
+    Response (Multi-PDF):
+        201: { "session_id", "session_type": "multi_pdf_chat",
+               "resource_ids": [...], "resource_count", "title" }
+
+    Errors:
+        400: Missing / invalid resource_id(s)
+        404: Any resource not found / cross-institution
+        422: Any resource not approved; or list too large / empty
+    """
+    import uuid as _uuid
+    payload = request.get_json(silent=True) or {}
+    institution_id = str(request.user.institution_id) if request.user.institution_id else None
+    user_id = str(request.user.id)
+
+    # ── Determine mode: Multi-PDF if resource_ids list present ────────────────
+    resource_ids_raw = payload.get('resource_ids')
+    resource_id_raw = (payload.get('resource_id') or '').strip()
+
+    use_multi = isinstance(resource_ids_raw, list)
+
+    svc = _get_pdf_chat_service()
+
+    if use_multi:
+        # ── Multi-PDF path ────────────────────────────────────────────────────
+        if len(resource_ids_raw) == 0:
+            return error_response(
+                code="VALIDATION_ERROR",
+                message="resource_ids must be a non-empty list",
+                status_code=400,
+            )
+        if len(resource_ids_raw) > _MAX_MULTI_PDF:
+            return error_response(
+                code="VALIDATION_ERROR",
+                message=f"Maximum {_MAX_MULTI_PDF} resources per session",
+                status_code=422,
+            )
+
+        try:
+            resources, err = svc.validate_resources(resource_ids_raw, institution_id or "")
+
+            if err == "EMPTY_LIST":
+                return error_response(code="VALIDATION_ERROR", message="resource_ids must be a non-empty list", status_code=400)
+            if err == "TOO_MANY":
+                return error_response(code="VALIDATION_ERROR", message=f"Maximum {_MAX_MULTI_PDF} resources per session", status_code=422)
+            if err == "INVALID_ID":
+                return error_response(code="VALIDATION_ERROR", message="One or more resource_ids are not valid UUIDs", status_code=400)
+            if err == "NOT_FOUND":
+                return error_response(code="NOT_FOUND", message="One or more resources not found or not accessible", status_code=404)
+            if err == "NOT_APPROVED":
+                return error_response(
+                    code="NOT_APPROVED",
+                    message="One or more resources have not been approved yet",
+                    status_code=422,
+                )
+
+            validated_ids = [str(r.id) for r in resources]
+            titles = [r.title for r in resources]
+
+            session = svc.start_multi_session(
+                user_id=user_id,
+                resource_ids=validated_ids,
+                resource_titles=titles,
+            )
+
+            return success_response(data={
+                "session_id": str(session.id),
+                "session_type": "multi_pdf_chat",
+                "resource_ids": validated_ids,
+                "resource_count": len(validated_ids),
+                "title": session.title,
+                "created_at": session.created_at.isoformat() if session.created_at else None,
+            }, status_code=201)
+
+        except Exception as e:
+            logger.error("Multi-PDF session creation error: %s", type(e).__name__, exc_info=False)
+            return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
+
+    else:
+        # ── Single-PDF path (existing Cycle 2 behaviour) ──────────────────────
+        if not resource_id_raw:
+            return error_response(code="VALIDATION_ERROR", message="resource_id is required", status_code=400)
+
+        try:
+            resource, err = svc.validate_resource(resource_id_raw, institution_id)
+
+            if err == "INVALID_ID":
+                return error_response(code="VALIDATION_ERROR", message="Invalid resource_id format", status_code=400)
+            if err == "NOT_FOUND":
+                return error_response(code="NOT_FOUND", message="Resource not found", status_code=404)
+            if err == "NOT_APPROVED":
+                return error_response(
+                    code="NOT_APPROVED",
+                    message="This resource has not been approved yet and cannot be used for PDF chat.",
+                    status_code=422,
+                )
+
+            session = svc.start_session(
+                user_id=user_id,
+                resource_id=str(resource.id),
+                resource_title=resource.title,
+            )
+
+            return success_response(data={
+                "session_id": str(session.id),
+                "session_type": "pdf_chat",
+                "resource_id": str(resource.id),
+                "resource_title": resource.title,
+                "title": session.title,
+                "created_at": session.created_at.isoformat() if session.created_at else None,
+            }, status_code=201)
+
+        except Exception as e:
+            logger.error("PDF session creation error: %s", type(e).__name__, exc_info=False)
+            return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
+
+
+@ai_bp.route('/pdf/chat', methods=['POST'])
+@require_auth
+@require_permission('ai:use')
+def pdf_chat():
+    """Send a message in a PDF chat session (single-PDF or Multi-PDF).
+
+    Request body:
+        { "session_id": "<uuid>", "message": "What is dynamic programming?" }
+
+    Auto-routes to single-PDF or Multi-PDF handler based on session_type stored
+    in context_data. The client does not need to specify the mode.
+
+    Response:
+        200: { "session_id", "resource_id" | "resource_ids", "response",
+               "citations", "confidence", "model_used", "usage" }
+        400: Missing message or session_id, or wrong session type
+        404: Session not found or not owned by user
+        422: Stale resource (post-session deletion/unapproval)
+    """
+    import uuid as _uuid
+    payload = request.get_json(silent=True) or {}
+    message_text = (payload.get('message') or payload.get('prompt') or '').strip()
+    session_id = (payload.get('session_id') or '').strip()
+
+    if not message_text:
+        return error_response(code="VALIDATION_ERROR", message="Message text is required", status_code=400)
+    if len(message_text) > MAX_QUERY_LEN:
+        return error_response(
+            code="VALIDATION_ERROR",
+            message=f"Message too long. Maximum {MAX_QUERY_LEN} characters allowed.",
+            status_code=400,
+        )
+    if not session_id:
+        return error_response(code="VALIDATION_ERROR", message="session_id is required", status_code=400)
+
+    institution_id = str(request.user.institution_id) if request.user.institution_id else None
+    user_role = request.user.role
+    user_id = str(request.user.id)
+
+    try:
+        # IDOR: verify session belongs to the authenticated user
+        try:
+            sid = _uuid.UUID(session_id)
+            uid = _uuid.UUID(user_id)
+        except (ValueError, TypeError):
+            return error_response(code="NOT_FOUND", message="Session not found", status_code=404)
+
+        from app.models.ai_chat import ChatSession as _ChatSession
+        existing = db.session.query(_ChatSession).filter_by(
+            id=sid, user_id=uid, is_deleted=False
+        ).first()
+        if not existing:
+            return error_response(code="NOT_FOUND", message="Session not found", status_code=404)
+
+        ctx = existing.context_data or {}
+        session_type = ctx.get("session_type", "")
+
+        svc = _get_pdf_chat_service()
+
+        if session_type == "multi_pdf_chat":
+            # ── Multi-PDF path ────────────────────────────────────────────────
+            result = _run_async(
+                svc.send_message_multi(
+                    session_id=session_id,
+                    user_message_text=message_text,
+                    institution_id=institution_id,
+                    user_role=user_role,
+                )
+            )
+            return success_response(data=result)
+
+        elif session_type == "pdf_chat":
+            # ── Single-PDF path (Cycle 2, unchanged) ─────────────────────────
+            if not ctx.get("resource_id"):
+                return error_response(
+                    code="VALIDATION_ERROR",
+                    message="Session is not a PDF chat session",
+                    status_code=400,
+                )
+            result = _run_async(
+                svc.send_message(
+                    session_id=session_id,
+                    user_message_text=message_text,
+                    institution_id=institution_id,
+                    user_role=user_role,
+                )
+            )
+            return success_response(data=result)
+
+        else:
+            return error_response(
+                code="VALIDATION_ERROR",
+                message="Session is not a PDF chat session",
+                status_code=400,
+            )
+
+    except ValueError as e:
+        logger.warning("PDF chat validation error: %s", type(e).__name__)
+        err_msg = str(e)
+        # Stale resource after session creation
+        if "no longer accessible" in err_msg.lower():
+            return error_response(
+                code="RESOURCE_UNAVAILABLE",
+                message="One or more resources in this session are no longer available.",
+                status_code=422,
+            )
+        return error_response(code="NOT_FOUND", message="Session not found", status_code=404)
+    except Exception as e:
+        logger.error("PDF chat error: %s", type(e).__name__, exc_info=False)
+        return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
+
+
+@ai_bp.route('/pdf/sessions/<session_id>', methods=['GET'])
+@require_auth
+@require_permission('ai:use')
+def get_pdf_session(session_id):
+    """Get PDF chat session history and metadata (single-PDF or Multi-PDF).
+
+    Security: Only returns sessions owned by the authenticated user (IDOR prevention).
+
+    Response:
+        200: { "session_id", "session_type",
+               "resource_id" (single-PDF), "resource_title" (single-PDF),
+               "resource_ids" (multi-PDF), "messages": [...] }
+        404: Session not found or not owned by user
+    """
+    import uuid as _uuid
+    try:
+        sid = _uuid.UUID(session_id)
+        uid = _uuid.UUID(str(request.user.id))
+    except (ValueError, TypeError):
+        return error_response(code="NOT_FOUND", message="Session not found", status_code=404)
+
+    # IDOR prevention
+    from app.models.ai_chat import ChatSession as _ChatSession
+    session = db.session.query(_ChatSession).filter_by(
+        id=sid, user_id=uid, is_deleted=False
+    ).first()
+    if not session:
+        return error_response(code="NOT_FOUND", message="Session not found", status_code=404)
+
+    try:
+        svc = _get_pdf_chat_service()
+        history = svc.get_session_history(str(sid))
+        return success_response(data=history)
+    except Exception as e:
+        logger.error("PDF session history error: %s", type(e).__name__, exc_info=False)
         return error_response(code="AI_ERROR", message=_SAFE_AI_ERROR, status_code=500)
