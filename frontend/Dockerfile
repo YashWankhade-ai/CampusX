@@ -1,7 +1,8 @@
 FROM nginx:alpine
 
-# Copy static frontend assets into Nginx web root
-COPY . /usr/share/nginx/html
+# Replace default Nginx configuration with CampusX reverse proxy gateway
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

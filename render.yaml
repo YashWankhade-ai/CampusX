@@ -1,17 +1,13 @@
-# Render Blueprint Specification for CampusX Frontend
+# Render Blueprint Specification for CampusX
 version: "1"
 
 services:
   - type: web
     name: campusx-portal
-    runtime: static
+    runtime: docker
     rootDir: frontend
-    buildCommand: ""
-    staticPublishPath: ./
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    dockerfilePath: Dockerfile
+    plan: free
     envVars:
-      - key: CAMPUSX_API_URL
-        value: https://yash1190-campusx.hf.space
+      - key: PORT
+        value: "80"
