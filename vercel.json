@@ -1,26 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "run.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxDuration": 60
-      }
+      "source": "/(.*)",
+      "destination": "/api/index.py"
     }
-  ],
-  "routes": [
-    {
-      "src": "/static/(.*)",
-      "dest": "/app/static/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "run.py"
-    }
-  ],
-  "env": {
-    "FLASK_ENV": "production",
-    "ENABLE_PROXY_FIX": "1"
-  }
+  ]
 }
