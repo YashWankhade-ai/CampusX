@@ -14,19 +14,19 @@ def security_headers(response):
             "img-src 'self' data: https:; "
             "font-src 'self' https: data:; "
             "connect-src 'self' https: wss:; "
-            "frame-ancestors 'self' https://huggingface.co https://*.hf.space https://*.vercel.app;"
+            "frame-ancestors 'self' https://huggingface.co https://*.hf.space https://*.vercel.app https://*.onrender.com https://render.com;"
         )
     else:
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; "
+            "script-src 'self' 'unsafe-inline' https:; "
+            "style-src 'self' 'unsafe-inline' https:; "
             "img-src 'self' data: https:; "
             "font-src 'self' https: data:; "
             "connect-src 'self' https:; "
-            "frame-ancestors 'self' https://*.vercel.app https://huggingface.co https://*.hf.space;"
+            "frame-ancestors 'self' https://*.vercel.app https://*.onrender.com https://huggingface.co https://*.hf.space;"
         )
 
     response.headers["X-XSS-Protection"] = "1; mode=block"
