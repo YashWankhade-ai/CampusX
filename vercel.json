@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "https://yash1190-campusx.hf.space/$1"
+      "source": "/:path*",
+      "destination": "https://yash1190-campusx.hf.space/:path*"
     }
   ]
 }
