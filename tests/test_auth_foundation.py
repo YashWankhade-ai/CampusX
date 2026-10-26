@@ -128,6 +128,10 @@ def test_login_and_protected_endpoint_flow(client):
     token = good_json["data"]["access_token"]
 
     # 4. Protected endpoint without token -> 401 Unauthorized
+    try:
+        client.delete_cookie("access_token")
+    except Exception:
+        pass
     unauth_res = client.get("/api/v1/auth/me")
     assert unauth_res.status_code == 401
     unauth_json = unauth_res.get_json()

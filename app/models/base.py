@@ -12,6 +12,16 @@ class BaseModel(db.Model):
     is_deleted: Mapped[bool] = mapped_column(default=False, index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    def soft_delete(self):
+        """Mark record as soft-deleted."""
+        self.is_deleted = True
+        self.deleted_at = datetime.now(timezone.utc)
+
+    def restore(self):
+        """Restore a previously soft-deleted record."""
+        self.is_deleted = False
+        self.deleted_at = None
+
     def to_dict(self):
         res = {}
         for c in self.__table__.columns:
