@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusX — Learn Smarter. Search Faster. Powered by AI.</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    :root {
+      --cx-bg-page: #FAF8F5;
+      --cx-surface: #FFFFFF;
+      --cx-color-forest: #24483A;
+      --cx-color-forest-hover: #1A3429;
+      --cx-color-sand: #F2EFE9;
+      --cx-text-primary: #1C2421;
+      --cx-text-secondary: #526058;
+      --cx-border-muted: #E2DDD5;
+      --cx-accent-green: #10B981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--cx-bg-page);
+      color: var(--cx-text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250, 248, 245, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--cx-border-muted);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--cx-color-forest);
+      font-weight: 700;
+      font-size: 1.25rem;
+    }
+    .brand-badge {
+      background: var(--cx-color-forest);
+      color: #fff;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .nav-links a {
+      color: var(--cx-text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--cx-color-forest); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--cx-color-forest);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--cx-color-forest-hover);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--cx-color-forest);
+      color: var(--cx-color-forest);
+    }
+    .btn-outline:hover {
+      background: rgba(36, 72, 58, 0.05);
+    }
+
+    /* Hero */
+    .hero {
+      max-width: 900px;
+      margin: 3.5rem auto 2rem;
+      padding: 0 1.5rem;
+      text-align: center;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(16, 185, 129, 0.12);
+      color: #065F46;
+      padding: 0.35rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10B981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    .hero h1 {
+      font-size: 3rem;
+      line-height: 1.15;
+      color: var(--cx-color-forest);
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--cx-text-secondary);
+      max-width: 650px;
+      margin: 0 auto 2.5rem;
+    }
+
+    /* Live Interactive Search Bar */
+    .search-box {
+      max-width: 680px;
+      margin: 0 auto 3.5rem;
+      position: relative;
+    }
+    .search-input-group {
+      display: flex;
+      background: var(--cx-surface);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: 12px;
+      padding: 0.5rem;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+    }
+    .search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 1.05rem;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      color: var(--cx-text-primary);
+    }
+    .search-btn {
+      background: var(--cx-color-forest);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .search-btn:hover { background: var(--cx-color-forest-hover); }
+
+    /* Results */
+    #search-results {
+      margin-top: 1rem;
+      text-align: left;
+      display: none;
+      background: #fff;
+      border: 1px solid var(--cx-border-muted);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    /* Feature Cards */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto 4rem;
+      padding: 0 1.5rem;
+    }
+    .card {
+      background: var(--cx-surface);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: 14px;
+      padding: 1.75rem;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+      border-color: #CBD5E1;
+    }
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: var(--cx-color-forest);
+    }
+    .card p {
+      color: var(--cx-text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--cx-border-muted);
+      padding: 2rem;
+      text-align: center;
+      color: var(--cx-text-secondary);
+      font-size: 0.9rem;
+      background: var(--cx-surface);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="nav">
+    <a href="/" class="brand">
+      🎓 CampusX <span class="brand-badge">ZeroGPU</span>
+    </a>
+    <div class="nav-links">
+      <a href="https://yash1190-campusx.hf.space/student/dashboard" target="_blank">Student Portal</a>
+      <a href="https://yash1190-campusx.hf.space/admin/dashboard" target="_blank">Admin Console</a>
+      <a href="https://yash1190-campusx.hf.space/login" class="btn btn-outline" target="_blank">Sign In</a>
+      <a href="https://yash1190-campusx.hf.space/register" class="btn btn-primary" target="_blank">Create Account</a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span id="backend-status">Backend Connected (ZeroGPU Online)</span>
+    </div>
+
+    <h1>Learn Smarter. Search Faster.<br>Powered by AI.</h1>
+    <p>
+      CampusX is an enterprise academic intelligence platform engineered with hybrid semantic search, 
+      lecture notes indexing, and real-time study assistance.
+    </p>
+
+    <!-- Interactive Search Bar -->
+    <div class="search-box">
+      <form id="search-form" onsubmit="handleSearch(event)">
+        <div class="search-input-group">
+          <input 
+            type="text" 
+            id="query-input" 
+            class="search-input" 
+            placeholder="Search notes, textbooks, past papers, or ask an AI question..." 
+            required
+          />
+          <button type="submit" class="search-btn">Search & Ask</button>
+        </div>
+      </form>
+      <div id="search-results"></div>
+    </div>
+  </section>
+
+  <!-- Feature Grid -->
+  <section class="grid">
+    <div class="card">
+      <div>
+        <div class="card-icon">⚡</div>
+        <h3>ZeroGPU AI Acceleration</h3>
+        <p>Inference engine powered by Nvidia A100 GPU slices on Hugging Face Spaces for instant document summarization.</p>
+      </div>
+      <a href="https://yash1190-campusx.hf.space/api/v1/gpu-status" target="_blank" class="btn btn-outline" style="align-self:flex-start;">Check GPU Status &rarr;</a>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="card-icon">📚</div>
+        <h3>Curated Academic Vault</h3>
+        <p>Access department-verified syllabus notes, unit guides, exam questions, and course materials.</p>
+      </div>
+      <a href="https://yash1190-campusx.hf.space/student/search" target="_blank" class="btn btn-outline" style="align-self:flex-start;">Browse Library &rarr;</a>
+    </div>
+
+    <div class="card">
+      <div>
+        <div class="card-icon">🛡️</div>
+        <h3>Role-Based Access</h3>
+        <p>Secure authentication for Super Admins, Department Chairs, Professors, and Enrolled Scholars.</p>
+      </div>
+      <a href="https://yash1190-campusx.hf.space/login" target="_blank" class="btn btn-primary" style="align-self:flex-start;">Access Console &rarr;</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 CampusX Platform. Hosted globally on Vercel CDN & Accelerated by Hugging Face ZeroGPU.</p>
+  </footer>
+
+  <script>
+    const API_BASE = "https://yash1190-campusx.hf.space";
+
+    // Verify backend connectivity on load
+    async function checkHealth() {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/gpu-status`);
+        if (res.ok) {
+          const data = await res.json();
+          const badge = document.getElementById("backend-status");
+          badge.textContent = `Backend Connected: ${data.platform || 'ZeroGPU Online'}`;
+        }
+      } catch (err) {
+        console.warn("Backend handshake notice:", err);
+      }
+    }
+    checkHealth();
+
+    // Handle Search Queries
+    async function handleSearch(e) {
+      e.preventDefault();
+      const q = document.getElementById("query-input").value.trim();
+      if (!q) return;
+
+      const resultsDiv = document.getElementById("search-results");
+      resultsDiv.style.display = "block";
+      resultsDiv.innerHTML = `<div style="padding:1rem;color:#666;">Searching CampusX knowledge base for <strong>"${q}"</strong>...</div>`;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data.data || [];
+          if (items.length === 0) {
+            resultsDiv.innerHTML = `
+              <div style="padding:1rem;">
+                <p style="margin-bottom:0.75rem;">No exact notes match found for <strong>"${q}"</strong>.</p>
+                <a href="${API_BASE}/student/ai-chat" target="_blank" class="btn btn-primary" style="font-size:0.85rem;">Ask AI Assistant &rarr;</a>
+              </div>`;
+          } else {
+            resultsDiv.innerHTML = items.map(item => `
+              <div style="padding:0.75rem 0;border-bottom:1px solid #eee;">
+                <h4 style="color:#24483A;font-size:1.05rem;">${item.title || item.name}</h4>
+                <p style="font-size:0.85rem;color:#666;">${item.description || 'Academic study resource'}</p>
+              </div>
+            `).join('');
+          }
+        } else {
+          // Unauthenticated fallback
+          resultsDiv.innerHTML = `
+            <div style="padding:1rem;">
+              <p style="margin-bottom:0.75rem;font-weight:600;color:#24483A;">Ready to explore resources for "${q}"?</p>
+              <p style="font-size:0.85rem;color:#666;margin-bottom:1rem;">Sign in to access lecture slides, past exams, and AI study chats.</p>
+              <a href="${API_BASE}/login?next=/student/search" target="_blank" class="btn btn-primary" style="font-size:0.85rem;">Sign In to View Results &rarr;</a>
+            </div>`;
+        }
+      } catch (err) {
+        resultsDiv.innerHTML = `
+          <div style="padding:1rem;">
+            <p style="margin-bottom:0.75rem;font-weight:600;color:#24483A;">CampusX AI Assistant Ready</p>
+            <a href="${API_BASE}/login" target="_blank" class="btn btn-primary" style="font-size:0.85rem;">Sign In to CampusX &rarr;</a>
+          </div>`;
+      }
+    }
+  </script>
+</body>
+</html>

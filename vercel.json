@@ -1,8 +1,13 @@
 {
+  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/:path*",
-      "destination": "https://yash1190-campusx.hf.space/:path*"
+      "source": "/api/:path*",
+      "destination": "https://yash1190-campusx.hf.space/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://yash1190-campusx.hf.space/health"
     }
   ]
 }
