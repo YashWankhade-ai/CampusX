@@ -11,13 +11,19 @@ os.environ["VERCEL"] = "1"
 
 from run import app
 
-# Ensure tables exist in serverless environment
-with app.app_context():
-    try:
-        from app.extensions import db
-        db.create_all()
-    except Exception as db_err:
-        pass
+# Lazy database table creation on first request (prevents cold-start timeouts)
+_db_initialized = False
+
+@app.before_request
+def ensure_serverless_db():
+    global _db_initialized
+    if not _db_initialized:
+        _db_initialized = True
+        try:
+            from app.extensions import db
+            db.create_all()
+        except Exception as exc:
+            app.logger.warning(f"[Serverless DB Init]: {exc}")
 
 # WSGI Middleware to restore clean paths on Vercel
 class VercelPathFix:

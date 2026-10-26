@@ -15,9 +15,10 @@ def build_database_uri() -> str:
             return f"sqlite:///{path_part}"
         return explicit_uri
 
-    # On Vercel serverless environment, use /tmp SQLite database
+    # On Vercel serverless environment, use system temporary directory for SQLite
     if os.environ.get("VERCEL"):
-        return "sqlite:////tmp/campusx.db"
+        tmp_db = os.path.join(tempfile.gettempdir(), "campusx.db").replace("\\", "/")
+        return f"sqlite:///{tmp_db}"
 
     sqlite_db = os.path.join(base_dir, "instance", "campusx_dev.db").replace("\\", "/")
     if os.path.exists(sqlite_db):
