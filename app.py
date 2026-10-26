@@ -42,7 +42,10 @@ except Exception as e:
 
 import uvicorn
 from fastapi import FastAPI
-from starlette.middleware.wsgi import WSGIMiddleware
+try:
+    from a2wsgi import WSGIMiddleware
+except ImportError:
+    from starlette.middleware.wsgi import WSGIMiddleware
 from app import create_app
 
 flask_env = os.environ.get("FLASK_ENV", "production")
