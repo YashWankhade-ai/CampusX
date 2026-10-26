@@ -58,6 +58,21 @@ try:
 except Exception:
     pass
 
+# Auto-seed database if empty on startup
+with flask_app.app_context():
+    try:
+        from app.extensions import db
+        from app.models.user import User
+        db.create_all()
+        admin_user = db.session.query(User).filter_by(email="admin@campusx.edu").first()
+        if not admin_user:
+            print("[Startup] Initializing default seed data...", flush=True)
+            from seed import seed_database
+            seed_database()
+            print("[Startup] Default seed complete!", flush=True)
+    except Exception as e:
+        print(f"[Startup Seed Notice]: {e}", flush=True)
+
 # Initialize FastAPI parent application
 fastapi_app = FastAPI(title="CampusX AI Platform & Engine")
 

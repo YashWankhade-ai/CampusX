@@ -106,7 +106,7 @@ def renew_web_tokens(response):
                 user = User.query.filter_by(id=uuid.UUID(str(user_id))).first()
                 if user:
                     new_token = generate_access_token(user, expires_in_seconds=900)
-                    response.set_cookie("access_token", new_token, max_age=900, path="/", samesite="Lax")
+                    response.set_cookie("access_token", new_token, max_age=900, path="/", samesite="None", secure=True)
         except Exception:
             pass
     return response
@@ -157,9 +157,9 @@ def login():
                     token_data=result,
                     redirect_url=next_url
                 ))
-                resp.set_cookie("access_token", result["access_token"], max_age=900, path="/", samesite="Lax")
-                resp.set_cookie("refresh_token", result["refresh_token"], max_age=1209600, path="/", samesite="Lax")
-                resp.set_cookie("cx_role", role, max_age=1209600, path="/", samesite="Lax")
+                resp.set_cookie("access_token", result["access_token"], max_age=900, path="/", samesite="None", secure=True)
+                resp.set_cookie("refresh_token", result["refresh_token"], max_age=1209600, path="/", samesite="None", secure=True)
+                resp.set_cookie("cx_role", role, max_age=1209600, path="/", samesite="None", secure=True)
                 return resp
             else:
                 error_msg = result.get("message") or "Incorrect email or password."
@@ -186,9 +186,9 @@ def login():
                 token_data=result,
                 redirect_url=next_url
             ))
-            resp.set_cookie("access_token", result["access_token"], max_age=900, path="/", samesite="Lax")
-            resp.set_cookie("refresh_token", result["refresh_token"], max_age=1209600, path="/", samesite="Lax")
-            resp.set_cookie("cx_role", role, max_age=1209600, path="/", samesite="Lax")
+            resp.set_cookie("access_token", result["access_token"], max_age=900, path="/", samesite="None", secure=True)
+            resp.set_cookie("refresh_token", result["refresh_token"], max_age=1209600, path="/", samesite="None", secure=True)
+            resp.set_cookie("cx_role", role, max_age=1209600, path="/", samesite="None", secure=True)
             return resp
         else:
             error_msg = result.get("message") or "Incorrect email or password."
@@ -200,9 +200,9 @@ def login():
 def logout():
     """Logs out user by clearing authentication and role cookies."""
     resp = redirect(url_for("web.login"))
-    resp.set_cookie("access_token", "", max_age=0, path="/", samesite="Lax")
-    resp.set_cookie("refresh_token", "", max_age=0, path="/", samesite="Lax")
-    resp.set_cookie("cx_role", "", max_age=0, path="/", samesite="Lax")
+    resp.set_cookie("access_token", "", max_age=0, path="/", samesite="None", secure=True)
+    resp.set_cookie("refresh_token", "", max_age=0, path="/", samesite="None", secure=True)
+    resp.set_cookie("cx_role", "", max_age=0, path="/", samesite="None", secure=True)
     return resp
 
 
