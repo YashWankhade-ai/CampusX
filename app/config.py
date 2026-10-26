@@ -20,17 +20,20 @@ def build_database_uri() -> str:
         tmp_db = os.path.join(tempfile.gettempdir(), "campusx.db").replace("\\", "/")
         return f"sqlite:///{tmp_db}"
 
-    sqlite_db = os.path.join(base_dir, "instance", "campusx_dev.db").replace("\\", "/")
-    if os.path.exists(sqlite_db):
-        return f"sqlite:///{sqlite_db}"
+    # If explicit Postgres environment variables are provided, connect to PostgreSQL
+    if os.environ.get("POSTGRES_HOST") or os.environ.get("POSTGRES_DB"):
+        user = os.environ.get("POSTGRES_USER", "campusx")
+        password = os.environ.get("POSTGRES_PASSWORD", "campusx123")
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = os.environ.get("POSTGRES_PORT", "5432")
+        db_name = os.environ.get("POSTGRES_DB", "campusx_dev")
+        return f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
 
-    user = os.environ.get("POSTGRES_USER", "campusx")
-    password = os.environ.get("POSTGRES_PASSWORD", "campusx123")
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = os.environ.get("POSTGRES_PORT", "5432")
-    db_name = os.environ.get("POSTGRES_DB", "campusx_dev")
-
-    return f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
+    # Default to local SQLite database in instance directory (works out-of-the-box on HF ZeroGPU & local dev)
+    instance_dir = os.path.join(base_dir, "instance")
+    os.makedirs(instance_dir, exist_ok=True)
+    sqlite_db = os.path.join(instance_dir, "campusx_dev.db").replace("\\", "/")
+    return f"sqlite:///{sqlite_db}"
 
 class Config:
     # Changed to have NO default in base config. Production will crash if missing (fail-secure).

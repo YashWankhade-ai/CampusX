@@ -1,0 +1,9 @@
+# Render Static Site Rewrites and Reverse Proxy to Hugging Face ZeroGPU backend
+/api/*  https://yash1190-campusx.hf.space/api/:splat  200
+/login  https://yash1190-campusx.hf.space/login  200
+/register  https://yash1190-campusx.hf.space/register  200
+/logout  https://yash1190-campusx.hf.space/logout  200
+/health  https://yash1190-campusx.hf.space/health  200
+/student/*  https://yash1190-campusx.hf.space/student/:splat  200
+/admin/*  https://yash1190-campusx.hf.space/admin/:splat  200
+/uploads/*  https://yash1190-campusx.hf.space/uploads/:splat  200
