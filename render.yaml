@@ -1,0 +1,17 @@
+# Render Blueprint Specification for CampusX Frontend
+version: "1"
+
+services:
+  - type: web
+    name: campusx-portal
+    runtime: static
+    rootDir: frontend
+    buildCommand: ""
+    staticPublishPath: ./
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: CAMPUSX_API_URL
+        value: https://yash1190-campusx.hf.space
