@@ -122,3 +122,14 @@ def create_app(config_name=None):
         }), 500
 
     return app
+
+# Expose 'app' attribute for serverless environments (e.g. Vercel) that inspect package root
+_cached_app = None
+
+def __getattr__(name):
+    if name == "app":
+        global _cached_app
+        if _cached_app is None:
+            _cached_app = create_app()
+        return _cached_app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

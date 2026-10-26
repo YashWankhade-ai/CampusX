@@ -66,6 +66,21 @@ try:
 except Exception:
     pass
 
+class VercelPathFix:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        matched = environ.get('HTTP_X_MATCHED_PATH') or environ.get('HTTP_X_INVOKE_PATH')
+        raw = environ.get('PATH_INFO', '')
+        if matched and matched != raw:
+            environ['PATH_INFO'] = matched
+        elif raw in ('/api/index', '/api/index/'):
+            environ['PATH_INFO'] = '/'
+        return self.wsgi_app(environ, start_response)
+
+flask_app.wsgi_app = VercelPathFix(flask_app.wsgi_app)
+
 # ZeroGPU status probe endpoint
 @flask_app.route("/api/v1/gpu-status", methods=["GET"])
 def gpu_status():

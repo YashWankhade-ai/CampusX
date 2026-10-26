@@ -119,6 +119,7 @@ def design_system():
 
 # ── Public landing page ───────────────────────────────────────
 @web_bp.route("/")
+@web_bp.route("/api/index")
 def index():
     return render_template("landing.html")
 
