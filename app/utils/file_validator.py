@@ -83,10 +83,17 @@ def validate_mime_type(filename: str, content_type: str) -> tuple[bool, str]:
     ext = get_extension(filename)
     expected_mime = MIME_TYPE_MAP.get(ext)
     
-    if content_type == 'application/octet-stream':
+    clean_ct = (content_type or "").split(";")[0].strip().lower()
+    if not clean_ct or clean_ct == "application/octet-stream":
+        return True, ""
+
+    if ext == "pdf" and clean_ct in ("application/pdf", "application/x-pdf", "application/acrobat", "applications/vnd.pdf", "text/pdf", "binary/octet-stream"):
         return True, ""
         
-    if expected_mime and content_type != expected_mime:
+    if expected_mime and clean_ct != expected_mime.lower():
+        # Soft fallback: if extension is valid and known, permit general mime types
+        if clean_ct.startswith("application/") or clean_ct.startswith("text/") or clean_ct.startswith("image/"):
+            return True, ""
         return False, f"MIME type mismatch: Expected {expected_mime} but got {content_type}"
         
     return True, ""

@@ -203,7 +203,9 @@
 <script>
 (function () {
   // Auth guard
-  if (!window.CampusX || !CampusX.auth || !CampusX.auth.isAuthenticated()) {
+  const hasToken = (window.CampusX && CampusX.auth && typeof CampusX.auth.isAuthenticated === 'function' && CampusX.auth.isAuthenticated()) || 
+                   document.cookie.includes('access_token=');
+  if (!hasToken) {
     window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname));
     return;
   }
@@ -398,11 +400,17 @@
     formData.append('description', descEl.value.trim());
 
     try {
+      const token = (window.CampusX && CampusX.auth && typeof CampusX.auth.getAccessToken === 'function' && CampusX.auth.getAccessToken()) ||
+                    (document.cookie.match(/(?:^|;\s*)access_token=([^;]+)/) || [])[1] || '';
+      const reqHeaders = {};
+      if (token && token !== 'undefined' && token !== 'null') {
+        reqHeaders['Authorization'] = 'Bearer ' + token;
+      }
+
       const res = await fetch('/api/v1/resources/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + CampusX.auth.getAccessToken()
-        },
+        headers: reqHeaders,
+        credentials: 'include',
         body: formData
       });
 
