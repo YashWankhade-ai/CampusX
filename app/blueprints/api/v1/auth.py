@@ -69,7 +69,19 @@ def login():
     if not success:
         return error_response(code=result.get("code", "UNAUTHORIZED"), message=result.get("message", "Authentication failed"), status_code=status_code)
 
-    return success_response(data=result, status_code=status_code)
+    res, code = success_response(data=result, status_code=status_code)
+    from flask import make_response
+    resp = make_response(res, code)
+    access_token = result.get("access_token")
+    refresh_token = result.get("refresh_token")
+    role = (result.get("user") or {}).get("role", "STUDENT")
+    if access_token:
+        resp.set_cookie("access_token", access_token, max_age=900, path="/", samesite="Lax")
+    if refresh_token:
+        resp.set_cookie("refresh_token", refresh_token, max_age=1209600, path="/", samesite="Lax")
+    if role:
+        resp.set_cookie("cx_role", role, max_age=1209600, path="/", samesite="Lax")
+    return resp
 
 @auth_bp.route("/refresh", methods=["POST"], strict_slashes=False)
 def refresh():
@@ -82,7 +94,23 @@ def refresh():
     if not success:
         return error_response(code=result.get("code", "UNAUTHORIZED"), message=result.get("message", "Invalid refresh token"), status_code=status_code)
 
-    return success_response(data=result, status_code=status_code)
+    res, code = success_response(data=result, status_code=status_code)
+    from flask import make_response
+    resp = make_response(res, code)
+    access_token = result.get("access_token")
+    if access_token:
+        resp.set_cookie("access_token", access_token, max_age=900, path="/", samesite="Lax")
+    return resp
+
+@auth_bp.route("/logout", methods=["POST", "GET"], strict_slashes=False)
+def logout():
+    from flask import make_response
+    res, code = success_response(data={"message": "Logged out successfully"})
+    resp = make_response(res, code)
+    resp.delete_cookie("access_token", path="/")
+    resp.delete_cookie("refresh_token", path="/")
+    resp.delete_cookie("cx_role", path="/")
+    return resp
 
 @auth_bp.route("/me", methods=["GET"], strict_slashes=False)
 @require_auth

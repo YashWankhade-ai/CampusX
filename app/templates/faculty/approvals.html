@@ -1,13 +1,1 @@
-{% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Faculty Dashboard</a></li>
-    <li><a href="#">My Uploads</a></li>
-</ul>
-{% endblock %}
-{% block content %}
-<div class="page-body-inner">
-    <h1>Faculty: Approvals</h1>
-    <p>Welcome to the faculty interface.</p>
-</div>
-{% endblock %}
+{% include "admin/approval_queue.html" %}

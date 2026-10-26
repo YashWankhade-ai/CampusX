@@ -58,18 +58,23 @@ try:
 except Exception:
     pass
 
-# Auto-seed database if empty on startup
+# Build timestamp and release version to trigger HF rebuild
+APP_BUILD_VERSION = "2026.10.27.04-full-release"
+
+# Auto-seed database if empty or incomplete on startup
 with flask_app.app_context():
     try:
         from app.extensions import db
         from app.models.user import User
+        from app.models.department import Department
         db.create_all()
         admin_user = db.session.query(User).filter_by(email="admin@campusx.edu").first()
-        if not admin_user:
-            print("[Startup] Initializing default seed data...", flush=True)
+        dept_count = db.session.query(Department).count()
+        if not admin_user or dept_count < 6:
+            print(f"[Startup] Seeding database (admin_user={bool(admin_user)}, dept_count={dept_count})...", flush=True)
             from seed import seed_database
-            seed_database()
-            print("[Startup] Default seed complete!", flush=True)
+            seed_database(app=flask_app)
+            print("[Startup] Multi-branch seed complete!", flush=True)
     except Exception as e:
         print(f"[Startup Seed Notice]: {e}", flush=True)
 

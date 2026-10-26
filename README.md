@@ -1,5 +1,5 @@
 ---
-title: CampusX
+title: CampusX Universal Platform
 emoji: 🎓
 colorFrom: blue
 colorTo: indigo
@@ -8,6 +8,7 @@ sdk_version: 4.44.0
 app_file: app.py
 pinned: false
 license: mit
+short_description: Smart Campus Academic Intelligence Platform
 ---
 
 # CampusX — Smart Campus Learning Platform
