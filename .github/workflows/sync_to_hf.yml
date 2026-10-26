@@ -24,6 +24,6 @@ jobs:
             echo "Error: HF_TOKEN secret is missing in GitHub repository settings."
             exit 1
           fi
-          # Default to YashWankhade-ai/campusx or custom secret
-          REPO="${HF_SPACE_REPO:-YashWankhade-ai/campusx}"
+          # Default to yash1190/CampusX or custom secret
+          REPO="${HF_SPACE_REPO:-yash1190/CampusX}"
           git push --force "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${REPO}" main
