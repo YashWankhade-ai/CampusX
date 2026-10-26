@@ -1,13 +1,62 @@
+{% set active_page = "dashboard" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}Scholar Leaderboard — CampusX{% endblock %}
+{% block topbar_title %}Leaderboard{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Scholar Leaderboard</li>
+</ol>
 {% endblock %}
+
 {% block content %}
 <div class="page-body-inner">
-    <h1>Student: Leaderboard</h1>
-    <p>Welcome to the student interface.</p>
+
+  <div class="page-header" style="margin-bottom:var(--cx-space-6);">
+    <h1 class="page-header-title">🏆 Academic Scholar Leaderboard</h1>
+    <p class="page-header-sub">Recognizing top contributors, note creators, and active peer scholars across CampusX CIT.</p>
+  </div>
+
+  <div class="card" style="background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.03);">
+    <table style="width:100%;border-collapse:collapse;text-align:left;font-size:14px;">
+      <thead>
+        <tr style="background:var(--cx-bg-muted);border-bottom:1px solid var(--cx-border-muted);color:var(--cx-text-secondary);font-size:12px;text-transform:uppercase;">
+          <th style="padding:12px 20px;">Rank</th>
+          <th style="padding:12px 20px;">Scholar</th>
+          <th style="padding:12px 20px;">Department</th>
+          <th style="padding:12px 20px;">Notes Verified</th>
+          <th style="padding:12px 20px;">Reputation Points</th>
+          <th style="padding:12px 20px;">Badge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set top_scholars = [
+          {"rank": "🥇 1", "name": "Yash Wankhade", "email": "yash.wankhde.cse@ghrua.edu.in", "dept": "Computer Science", "notes": 18, "points": "2,450", "badge": "Master Scholar"},
+          {"rank": "🥈 2", "name": "Alex Johnson", "email": "student.alex@campusx.edu", "dept": "AI & Data Science", "notes": 14, "points": "1,980", "badge": "AI Researcher"},
+          {"rank": "🥉 3", "name": "Campus Student", "email": "student@campusx.edu", "dept": "Computer Science", "notes": 9, "points": "1,420", "badge": "Top Contributor"}
+        ] %}
+        {% for s in top_scholars %}
+        <tr style="border-bottom:1px solid var(--cx-border-muted);">
+          <td style="padding:16px 20px;font-weight:700;font-size:15px;">{{ s.rank }}</td>
+          <td style="padding:16px 20px;font-weight:600;color:var(--cx-color-forest);">
+            <div>{{ s.name }}</div>
+            <div style="font-size:12px;color:var(--cx-text-muted);">{{ s.email }}</div>
+          </td>
+          <td style="padding:16px 20px;color:var(--cx-text-secondary);">{{ s.dept }}</td>
+          <td style="padding:16px 20px;font-weight:600;">{{ s.notes }} materials</td>
+          <td style="padding:16px 20px;font-weight:700;color:#10B981;">{{ s.points }} XP</td>
+          <td style="padding:16px 20px;">
+            <span style="background:rgba(36,72,58,0.1);color:var(--cx-color-forest);padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:600;">{{ s.badge }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
 </div>
 {% endblock %}

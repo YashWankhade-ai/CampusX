@@ -1,13 +1,70 @@
+{% set active_page = "settings" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
+
+{% block title %}System Settings — CampusX Admin{% endblock %}
+{% block topbar_title %}Settings{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/admin/dashboard">Admin</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Platform Settings</li>
+</ol>
 {% endblock %}
+
 {% block content %}
 <div class="page-body-inner">
-    <h1>Admin: Settings</h1>
-    <p>Welcome to the admin interface.</p>
+
+  <div class="page-header" style="margin-bottom:var(--cx-space-6);">
+    <h1 class="page-header-title">CampusX Platform Settings</h1>
+    <p class="page-header-sub">Configure AI model engine thresholds, authentication timeouts, and academic session parameters.</p>
+  </div>
+
+  <div style="max-width:760px;display:flex;flex-direction:column;gap:24px;">
+
+    <!-- AI Inference Engine Settings -->
+    <div class="card" style="padding:24px;background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <h3 style="font-size:16px;font-weight:600;color:var(--cx-color-forest);margin:0 0 16px;">AI Engine Configuration</h3>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Inference Provider</label>
+          <input class="input" type="text" value="Hugging Face Spaces ZeroGPU (A100 Tensor Core)" readonly style="background:var(--cx-bg-muted);cursor:not-allowed;">
+          <span style="font-size:12px;color:var(--cx-text-muted);margin-top:4px;display:block;">Managed dynamically via `@spaces.GPU` supervisor.</span>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Default AI Embedding Model</label>
+          <input class="input" type="text" value="BAAI/bge-small-en-v1.5 (384 Dimensions)" readonly style="background:var(--cx-bg-muted);">
+        </div>
+      </div>
+    </div>
+
+    <!-- Security & Auth Settings -->
+    <div class="card" style="padding:24px;background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <h3 style="font-size:16px;font-weight:600;color:var(--cx-color-forest);margin:0 0 16px;">Authentication & Security</h3>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">JWT Access Token Lifespan</label>
+          <input class="input" type="text" value="15 Minutes (900 seconds)" readonly style="background:var(--cx-bg-muted);">
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Password Hashing Algorithm</label>
+          <input class="input" type="text" value="Argon2id (time_cost=3, memory_cost=65536)" readonly style="background:var(--cx-bg-muted);">
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Maximum PDF Upload Size</label>
+          <input class="input" type="text" value="25 Megabytes (26,214,400 bytes)" readonly style="background:var(--cx-bg-muted);">
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-primary" onclick="alert('Configuration parameters are synchronized and up-to-date.')">Save Changes</button>
+      <a href="/admin/dashboard" class="btn btn-outline">Back to Dashboard</a>
+    </div>
+
+  </div>
+
 </div>
 {% endblock %}

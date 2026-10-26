@@ -1,13 +1,79 @@
+{% set active_page = "roles" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
+
+{% block title %}Roles & RBAC Access — CampusX Admin{% endblock %}
+{% block topbar_title %}Roles & Access{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/admin/dashboard">Admin</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Roles & Permissions</li>
+</ol>
 {% endblock %}
+
 {% block content %}
 <div class="page-body-inner">
-    <h1>Admin: Roles</h1>
-    <p>Welcome to the admin interface.</p>
+
+  <div class="page-header" style="margin-bottom:var(--cx-space-6);">
+    <h1 class="page-header-title">Role-Based Access Control (RBAC) Matrix</h1>
+    <p class="page-header-sub">Configure institutional permissions across administrative, faculty, and student personas.</p>
+  </div>
+
+  <div class="card" style="background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.03);">
+    <div style="padding:16px 24px;border-bottom:1px solid var(--cx-border-muted);background:var(--cx-bg-muted);display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:15px;font-weight:600;margin:0;color:var(--cx-color-forest);">Configured Role Hierarchy</h3>
+      <span style="font-size:12px;color:var(--cx-text-muted);">Enforced via Argon2id & JWT Claims</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;text-align:left;font-size:13.5px;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--cx-border-muted);color:var(--cx-text-secondary);font-size:12px;text-transform:uppercase;">
+            <th style="padding:12px 20px;">Role Identifier</th>
+            <th style="padding:12px 20px;">Persona Description</th>
+            <th style="padding:12px 20px;">Read Content</th>
+            <th style="padding:12px 20px;">Upload / Contribute</th>
+            <th style="padding:12px 20px;">Approve Notes</th>
+            <th style="padding:12px 20px;">Manage Users</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set roles_matrix = [
+            {"id": "SUPER_ADMIN", "desc": "Full root-level authority across all institutions and databases", "r": true, "w": true, "a": true, "u": true},
+            {"id": "ADMIN", "desc": "University administrator managing courses, users, and approval queues", "r": true, "w": true, "a": true, "u": true},
+            {"id": "DEPARTMENT_ADMIN", "desc": "Faculty coordinator managing departmental courses and students", "r": true, "w": true, "a": true, "u": false},
+            {"id": "FACULTY", "desc": "Course instructor, verifies materials, assigns curriculum", "r": true, "w": true, "a": true, "u": false},
+            {"id": "STUDENT", "desc": "Enrolled student, accesses course vaults, asks AI study questions", "r": true, "w": true, "a": false, "u": false},
+            {"id": "GUEST", "desc": "Unverified visitor with restricted public preview permissions", "r": true, "w": false, "a": false, "u": false}
+          ] %}
+          {% for r in roles_matrix %}
+          <tr style="border-bottom:1px solid var(--cx-border-muted);">
+            <td style="padding:16px 20px;font-weight:700;color:var(--cx-color-forest);">
+              <span style="background:rgba(36,72,58,0.08);padding:3px 8px;border-radius:6px;font-family:monospace;font-size:12px;">
+                {{ r.id }}
+              </span>
+            </td>
+            <td style="padding:16px 20px;color:var(--cx-text-secondary);max-width:320px;">
+              {{ r.desc }}
+            </td>
+            <td style="padding:16px 20px;color:#10B981;font-weight:700;">&check; Allowed</td>
+            <td style="padding:16px 20px;">
+              {% if r.w %}<span style="color:#10B981;font-weight:700;">&check; Allowed</span>{% else %}<span style="color:#94A3B8;">&mdash; No</span>{% endif %}
+            </td>
+            <td style="padding:16px 20px;">
+              {% if r.a %}<span style="color:#10B981;font-weight:700;">&check; Allowed</span>{% else %}<span style="color:#94A3B8;">&mdash; No</span>{% endif %}
+            </td>
+            <td style="padding:16px 20px;">
+              {% if r.u %}<span style="color:#10B981;font-weight:700;">&check; Allowed</span>{% else %}<span style="color:#94A3B8;">&mdash; No</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

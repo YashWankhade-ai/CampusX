@@ -5,7 +5,7 @@ from .config import config_by_name, Config
 from .logging_config import setup_logging
 from .repositories.health_repository import HealthRepository
 
-def create_app(config_name=None):
+def create_app(config_name=None, run_seed=True):
     """
     Application Factory Pattern for CampusX Backend.
     Sprint 2 Database Foundation: SQLAlchemy 2.x, Flask-Migrate, Session Lifecycle, Health Readiness.
@@ -52,15 +52,16 @@ def create_app(config_name=None):
     app.register_blueprint(api_v1_bp)
 
     # Ensure database schema and default seed data are initialized
-    with app.app_context():
-        try:
-            from .models.user import User
-            db.create_all()
-            if not User.query.filter_by(email="admin@campusx.edu").first():
-                from seed import seed_database
-                seed_database()
-        except Exception as e:
-            app.logger.warning(f"[DB Auto-Init Warning]: {e}")
+    if run_seed:
+        with app.app_context():
+            try:
+                from .models.user import User
+                db.create_all()
+                if not User.query.filter_by(email="admin@campusx.edu").first():
+                    from seed import seed_database
+                    seed_database(app=app)
+            except Exception as e:
+                app.logger.warning(f"[DB Auto-Init Warning]: {e}")
 
     # Register Middlewares
     from .middleware.security_headers import security_headers

@@ -1,13 +1,70 @@
+{% set active_page = "bookmarks" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}My Bookmarks — CampusX{% endblock %}
+{% block topbar_title %}Bookmarks{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Bookmarks</li>
+</ol>
 {% endblock %}
+
 {% block content %}
 <div class="page-body-inner">
-    <h1>Student: Bookmarks</h1>
-    <p>Welcome to the student interface.</p>
+
+  <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--cx-space-4);margin-bottom:var(--cx-space-6);">
+    <div>
+      <h1 class="page-header-title">Saved Notes & Bookmarks</h1>
+      <p class="page-header-sub">Your personal academic vault. Quick access to starred notes, formula sheets, and past papers.</p>
+    </div>
+    <div>
+      <a href="/student/resources" class="btn btn-outline btn-sm">Browse More Resources &rarr;</a>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:20px;">
+    
+    <!-- Bookmark Card 1 -->
+    <div class="card" style="padding:20px;background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.03);">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(36,72,58,0.1);color:var(--cx-color-forest);">CS301 &bull; ALGORITHMS</span>
+          <span style="color:#F59E0B;font-size:16px;">★ Saved</span>
+        </div>
+        <h3 style="font-size:16px;font-weight:600;color:var(--cx-color-forest);margin:0 0 8px;">Algorithms Comprehensive Master Notes</h3>
+        <p style="font-size:13px;color:var(--cx-text-secondary);line-height:1.5;margin:0 0 16px;">
+          Divide and conquer, dynamic programming, 0/1 knapsack, and amortized complexity derivations.
+        </p>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--cx-border-muted);">
+        <span style="font-size:12px;color:var(--cx-text-muted);">PDF &bull; 4.2 MB</span>
+        <a href="/student/resources" class="btn btn-primary btn-sm" style="font-size:12px;padding:4px 10px;">Open Notes &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Bookmark Card 2 -->
+    <div class="card" style="padding:20px;background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.03);">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(36,72,58,0.1);color:var(--cx-color-forest);">CS201 &bull; DATA STRUCTURES</span>
+          <span style="color:#F59E0B;font-size:16px;">★ Saved</span>
+        </div>
+        <h3 style="font-size:16px;font-weight:600;color:var(--cx-color-forest);margin:0 0 8px;">Data Structures Hand-Written Revision Vault</h3>
+        <p style="font-size:13px;color:var(--cx-text-secondary);line-height:1.5;margin:0 0 16px;">
+          AVL trees rotations, Red-Black balancing, min-heap insertion, and Dijkstra shortest paths.
+        </p>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--cx-border-muted);">
+        <span style="font-size:12px;color:var(--cx-text-muted);">PDF &bull; 3.8 MB</span>
+        <a href="/student/resources" class="btn btn-primary btn-sm" style="font-size:12px;padding:4px 10px;">Open Notes &rarr;</a>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 {% endblock %}

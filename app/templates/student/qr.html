@@ -1,13 +1,73 @@
+{% set active_page = "profile" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}Digital Student ID Card — CampusX{% endblock %}
+{% block topbar_title %}Digital Student ID{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="/student/profile">Profile</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Digital ID</li>
+</ol>
 {% endblock %}
+
 {% block content %}
-<div class="page-body-inner">
-    <h1>Student: Qr</h1>
-    <p>Welcome to the student interface.</p>
+<div class="page-body-inner" style="max-width:540px;margin:0 auto;text-align:center;">
+
+  <div class="page-header" style="margin-bottom:var(--cx-space-6);">
+    <h1 class="page-header-title">🎓 Digital Campus ID Card</h1>
+    <p class="page-header-sub">Verified institutional QR identification for library loans, lab access, and exam hall entry.</p>
+  </div>
+
+  <div class="card" style="
+    background: linear-gradient(135deg, #24483A 0%, #1A3429 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 12px 36px rgba(36,72,58,0.25);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  ">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
+      <div>
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;opacity:0.8;">CampusX Institute of Technology</div>
+        <h2 style="font-size:20px;font-weight:700;margin:4px 0 0;color:#fff;">SCHOLAR PASS</h2>
+      </div>
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;">
+        🎓
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:28px;">
+      <div style="width:72px;height:72px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid rgba(255,255,255,0.4);">
+        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Yash" alt="Avatar" style="width:100%;height:100%;">
+      </div>
+      <div>
+        <h3 style="font-size:18px;font-weight:700;margin:0;color:#fff;">Yash Wankhade</h3>
+        <p style="font-size:13px;opacity:0.85;margin:2px 0 0;">B.Tech Computer Science & Engineering</p>
+        <span style="display:inline-block;background:rgba(16,185,129,0.25);color:#A7F3D0;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;margin-top:6px;">VERIFIED STUDENT</span>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:11px;opacity:0.7;text-transform:uppercase;">Institutional ID</div>
+        <div style="font-size:15px;font-weight:700;letter-spacing:1px;font-family:monospace;margin-top:2px;">STU-CSE-2026-001</div>
+      </div>
+      <div>
+        <div style="font-size:11px;opacity:0.7;text-transform:uppercase;">Valid Through</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px;">MAY 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;">
+    <a href="/student/profile" class="btn btn-outline">Back to Profile</a>
+  </div>
+
 </div>
 {% endblock %}

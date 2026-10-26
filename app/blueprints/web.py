@@ -795,7 +795,12 @@ def admin_dashboard():
 
 @web_bp.route("/admin/institutions")
 def admin_institutions():
-    return render_template("admin/institutions.html")
+    from app.models.academic import Institution
+    try:
+        inst = Institution.query.first()
+    except Exception:
+        inst = None
+    return render_template("admin/institutions.html", institution=inst)
 
 
 @web_bp.route("/admin/users")
@@ -1198,15 +1203,26 @@ def admin_delete_user(user_id):
 
 @web_bp.route("/admin/analytics")
 def admin_analytics():
-    return render_template("admin/analytics.html")
+    stats = _get_admin_dashboard_data()
+    return render_template("admin/analytics.html", stats=stats)
 
 @web_bp.route("/admin/departments")
 def admin_departments():
-    return render_template("admin/departments.html")
+    from app.models.academic import Department
+    try:
+        departments = Department.query.filter_by(is_deleted=False).all()
+    except Exception:
+        departments = []
+    return render_template("admin/departments.html", departments=departments)
 
 @web_bp.route("/admin/roles")
 def admin_roles():
-    return render_template("admin/roles.html")
+    from app.models.user import Role
+    try:
+        roles = Role.query.all()
+    except Exception:
+        roles = []
+    return render_template("admin/roles.html", roles=roles)
 
 @web_bp.route("/admin/settings")
 def admin_settings():
@@ -1214,7 +1230,12 @@ def admin_settings():
 
 @web_bp.route("/admin/audit-log")
 def admin_audit_log():
-    return render_template("admin/audit_log.html")
+    from app.models.audit import AuditLog
+    try:
+        logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(50).all()
+    except Exception:
+        logs = []
+    return render_template("admin/audit_log.html", logs=logs)
 
 @web_bp.route("/admin/profile")
 def admin_profile():

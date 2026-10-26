@@ -1,13 +1,2 @@
-{% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
-{% endblock %}
-{% block content %}
-<div class="page-body-inner">
-    <h1>Student: Library</h1>
-    <p>Welcome to the student interface.</p>
-</div>
-{% endblock %}
+{% set active_page = "resources" %}
+{% include "student/resources.html" %}

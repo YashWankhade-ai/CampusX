@@ -1,13 +1,76 @@
+{% set active_page = "study_tools" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}Interactive Flashcards — CampusX{% endblock %}
+{% block topbar_title %}Flashcards{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="/student/study-tools">Study Tools</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Flashcards</li>
+</ol>
 {% endblock %}
+
 {% block content %}
-<div class="page-body-inner">
-    <h1>Student: Flashcards</h1>
-    <p>Welcome to the student interface.</p>
+<div class="page-body-inner" style="max-width:720px;text-align:center;">
+
+  <div class="page-header" style="margin-bottom:var(--cx-space-6);">
+    <h1 class="page-header-title">🗂️ Active Recall Flashcards</h1>
+    <p class="page-header-sub">Click the card to reveal definitions, recurrence relations, and key theorems.</p>
+  </div>
+
+  <div id="flashcard" onclick="this.classList.toggle('flipped')" style="
+    perspective: 1000px;
+    height: 280px;
+    cursor: pointer;
+    margin: 0 auto 24px;
+    background: #fff;
+    border: 2px solid var(--cx-color-forest);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 32px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+    transition: transform 0.2s;
+  ">
+    <div id="card-front">
+      <span style="font-size:12px;font-weight:700;color:var(--cx-text-muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:12px;">CS301 &bull; CONCEPT</span>
+      <h2 style="font-size:22px;color:var(--cx-color-forest);margin:0 0 12px;">Master Theorem Recurrence</h2>
+      <p style="font-size:14px;color:var(--cx-text-secondary);margin:0;">What are the 3 cases of T(n) = aT(n/b) + f(n)?</p>
+      <span style="font-size:12px;color:#0ea5e9;font-weight:600;display:block;margin-top:20px;">(Click to flip card &rarr;)</span>
+    </div>
+    <div id="card-back" style="display:none;">
+      <span style="font-size:12px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:12px;">ANSWER REVEALED</span>
+      <p style="font-size:15px;color:var(--cx-text-primary);line-height:1.6;margin:0 0 12px;font-family:monospace;">
+        Compare f(n) to n^(log_b a):<br>
+        Case 1: f(n) = O(n^(log_b a - &epsilon;)) &rarr; &Theta;(n^log_b a)<br>
+        Case 2: f(n) = &Theta;(n^log_b a) &rarr; &Theta;(n^log_b a &bull; log n)<br>
+        Case 3: f(n) = &Omega;(n^(log_b a + &epsilon;)) &rarr; &Theta;(f(n))
+      </p>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;gap:16px;">
+    <button class="btn btn-secondary" onclick="
+      const card = document.getElementById('flashcard');
+      const front = document.getElementById('card-front');
+      const back = document.getElementById('card-back');
+      if (front.style.display === 'none') {
+        front.style.display = 'block';
+        back.style.display = 'none';
+      } else {
+        front.style.display = 'none';
+        back.style.display = 'block';
+      }
+    ">Flip Card</button>
+
+    <a href="/student/study-tools" class="btn btn-outline">Back to Study Tools</a>
+  </div>
+
 </div>
 {% endblock %}

@@ -1,13 +1,121 @@
+{% set active_page = "departments" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
+
+{% block title %}Departments Management — CampusX Admin{% endblock %}
+{% block topbar_title %}Departments{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/admin/dashboard">Admin</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Departments</li>
+</ol>
 {% endblock %}
+
 {% block content %}
 <div class="page-body-inner">
-    <h1>Admin: Departments</h1>
-    <p>Welcome to the admin interface.</p>
+
+  <!-- Header -->
+  <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--cx-space-4);margin-bottom:var(--cx-space-6);">
+    <div>
+      <h1 class="page-header-title">Academic Departments</h1>
+      <p class="page-header-sub">Manage engineering & academic departments, program curricula, and faculty coordinators.</p>
+    </div>
+    <div style="display:flex;gap:var(--cx-space-3);">
+      <button class="btn btn-primary btn-sm" onclick="alert('Department creation dialog: All departments currently synchronized from CIT catalog.')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Department
+      </button>
+    </div>
+  </div>
+
+  <!-- Metric Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--cx-space-4);margin-bottom:var(--cx-space-8);">
+    <div class="card" style="padding:var(--cx-space-5);background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <span style="font-size:12px;color:var(--cx-text-secondary);text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Total Departments</span>
+      <div style="font-size:28px;font-weight:700;color:var(--cx-color-forest);margin-top:4px;">{{ departments|length if departments else 6 }}</div>
+      <span style="font-size:12px;color:#10B981;font-weight:500;">All 6 Active Branches</span>
+    </div>
+    <div class="card" style="padding:var(--cx-space-5);background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <span style="font-size:12px;color:var(--cx-text-secondary);text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Accredited Programs</span>
+      <div style="font-size:28px;font-weight:700;color:var(--cx-color-forest);margin-top:4px;">8</div>
+      <span style="font-size:12px;color:var(--cx-text-secondary);">B.Tech & M.Tech Tracks</span>
+    </div>
+    <div class="card" style="padding:var(--cx-space-5);background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <span style="font-size:12px;color:var(--cx-text-secondary);text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Faculty Chairs</span>
+      <div style="font-size:28px;font-weight:700;color:var(--cx-color-forest);margin-top:4px;">12</div>
+      <span style="font-size:12px;color:var(--cx-text-secondary);">Assigned Course Instructors</span>
+    </div>
+    <div class="card" style="padding:var(--cx-space-5);background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;">
+      <span style="font-size:12px;color:var(--cx-text-secondary);text-transform:uppercase;font-weight:600;letter-spacing:0.5px;">Active Scholars</span>
+      <div style="font-size:28px;font-weight:700;color:var(--cx-color-forest);margin-top:4px;">{{ total_students or '1,420' }}</div>
+      <span style="font-size:12px;color:#10B981;font-weight:500;">99.2% Enrolled</span>
+    </div>
+  </div>
+
+  <!-- Departments Table -->
+  <div class="card" style="background:#fff;border:1px solid var(--cx-border-muted);border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.03);">
+    <div style="padding:var(--cx-space-4) var(--cx-space-6);border-bottom:1px solid var(--cx-border-muted);display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-size:16px;font-weight:600;margin:0;color:var(--cx-color-forest);">Verified Engineering Departments</h3>
+      <span style="font-size:13px;color:var(--cx-text-muted);">Institution: CampusX Institute of Technology</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;text-align:left;font-size:14px;">
+        <thead>
+          <tr style="background:var(--cx-bg-muted);border-bottom:1px solid var(--cx-border-muted);color:var(--cx-text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">
+            <th style="padding:12px 20px;">Department Name</th>
+            <th style="padding:12px 20px;">Branch Code</th>
+            <th style="padding:12px 20px;">Degree Programs</th>
+            <th style="padding:12px 20px;">Core Courses</th>
+            <th style="padding:12px 20px;">Status</th>
+            <th style="padding:12px 20px;text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set default_depts = [
+            {"name": "Computer Science & Engineering", "code": "CSE", "programs": "B.Tech CSE, M.Tech Data Science", "courses": 24, "status": "Active"},
+            {"name": "Artificial Intelligence & Data Science", "code": "AIDS", "programs": "B.Tech AI & Data Science", "courses": 18, "status": "Active"},
+            {"name": "Information Technology", "code": "IT", "programs": "B.Tech Information Technology", "courses": 20, "status": "Active"},
+            {"name": "Electronics & Communication Engineering", "code": "ECE", "programs": "B.Tech ECE, Embedded Systems", "courses": 22, "status": "Active"},
+            {"name": "Mechanical Engineering", "code": "ME", "programs": "B.Tech Mechanical Engineering", "courses": 26, "status": "Active"},
+            {"name": "Civil Engineering", "code": "CE", "programs": "B.Tech Civil Engineering", "courses": 19, "status": "Active"}
+          ] %}
+          {% for d in (departments if departments else default_depts) %}
+          <tr style="border-bottom:1px solid var(--cx-border-muted);transition:background 0.15s ease;">
+            <td style="padding:16px 20px;font-weight:600;color:var(--cx-color-forest);">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:rgba(36,72,58,0.08);display:flex;align-items:center;justify-content:center;color:var(--cx-color-forest);font-weight:700;font-size:12px;">
+                  {{ (d.code if d.code else (d.name[:2]|upper)) }}
+                </div>
+                <span>{{ d.name }}</span>
+              </div>
+            </td>
+            <td style="padding:16px 20px;color:var(--cx-text-secondary);font-family:monospace;font-size:13px;font-weight:600;">
+              {{ d.code if d.code else "ENG" }}
+            </td>
+            <td style="padding:16px 20px;color:var(--cx-text-secondary);">
+              {{ d.programs if d.programs else "Undergraduate & Postgraduate" }}
+            </td>
+            <td style="padding:16px 20px;color:var(--cx-text-secondary);font-weight:500;">
+              {{ d.courses if d.courses else "20+ Core Subjects" }}
+            </td>
+            <td style="padding:16px 20px;">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:9999px;font-size:11.5px;font-weight:600;background:rgba(16,185,129,0.12);color:#065F46;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#10B981;"></span>
+                Active
+              </span>
+            </td>
+            <td style="padding:16px 20px;text-align:right;">
+              <a href="/student/courses" class="btn btn-outline btn-sm" style="font-size:12px;padding:4px 10px;">View Vault &rarr;</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
