@@ -112,12 +112,17 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def internal_error(error):
+        import traceback
+        err_msg = traceback.format_exc()
+        app.logger.error(f"[500 Error Handler]: {err_msg}")
         db.session.rollback()
         return jsonify({
             "success": False,
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": "An unexpected server error occurred."
+                "message": "An unexpected server error occurred.",
+                "details": str(getattr(error, 'description', error)),
+                "trace": err_msg
             }
         }), 500
 
