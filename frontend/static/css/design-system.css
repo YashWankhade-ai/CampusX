@@ -1,0 +1,18 @@
+/*
+ * CampusX Design System — Entry Point
+ *
+ * Import order is critical. Do not reorder.
+ * 1. Design Tokens (CSS custom properties)
+ * 2. Base reset and global typography
+ * 3. Layout / application shell
+ * 4. Component library
+ *
+ * DO NOT add UI-specific rules to this file.
+ * DO NOT hardcode any color, spacing, or radius values here.
+ * Use only variables defined in tokens.css.
+ */
+
+@import url('tokens.css');
+@import url('base.css');
+@import url('layout.css');
+@import url('components.css');

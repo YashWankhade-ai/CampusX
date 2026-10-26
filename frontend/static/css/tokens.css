@@ -1,0 +1,239 @@
+/*
+ * CampusX Design Tokens — v1.0
+ * ============================================================
+ * SINGLE SOURCE OF TRUTH for all visual values.
+ * Do NOT hardcode colors, spacing, or radius in component files.
+ * Consume these tokens only.
+ *
+ * Color naming convention:
+ *   --cx-[semantic-role]  (for UI consumption)
+ *   --cx-color-[name]     (raw palette values)
+ *
+ * IDENTITY: Warm Academic Editorial
+ * NOT: Blue/purple/violet AI SaaS
+ * ============================================================
+ */
+
+:root {
+
+  /* ──────────────────────────────────────────────────────────
+   * RAW PALETTE  (reference only — use semantic tokens below)
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-color-ink:              #202522;
+  --cx-color-forest:           #24483A;
+  --cx-color-forest-dark:      #1a3429;
+  --cx-color-forest-mid:       #2e5a49;
+  --cx-color-forest-light:     #3a6b58;
+  --cx-color-moss:             #61745A;
+  --cx-color-moss-light:       #7a8f73;
+  --cx-color-terracotta:       #B85C38;
+  --cx-color-terracotta-dark:  #963f2e;
+  --cx-color-terracotta-light: #cc6e47;
+  --cx-color-ochre:            #C49A45;
+  --cx-color-ochre-light:      #d4af6a;
+  --cx-color-ochre-pale:       #f5edce;
+  --cx-color-ivory:              #FFFFFF;
+  --cx-color-sand:               #E2E8F0;
+  --cx-color-paper:              #FFFFFF;
+  --cx-color-brick:              #963F2E;
+  --cx-color-white:              #FFFFFF;
+
+  /* Crisp modern neutrals */
+  --cx-color-neutral-50:  #F8FAFC;
+  --cx-color-neutral-100: #F1F5F9;
+  --cx-color-neutral-200: #E2E8F0;
+  --cx-color-neutral-300: #CBD5E1;
+  --cx-color-neutral-400: #94A3B8;
+  --cx-color-neutral-500: #64748B;
+  --cx-color-neutral-600: #475569;
+  --cx-color-neutral-700: #334155;
+  --cx-color-neutral-800: #1E293B;
+  --cx-color-neutral-900: #0F172A;
+
+
+  /* ──────────────────────────────────────────────────────────
+   * SEMANTIC COLOR TOKENS
+   * ────────────────────────────────────────────────────────── */
+
+  /* Backgrounds */
+  --cx-bg-page:           #FFFFFF;
+  --cx-bg-surface:        #FFFFFF;
+  --cx-bg-surface-2:      #F8FAFC;
+  --cx-bg-sidebar:        var(--cx-color-forest);
+  --cx-bg-sidebar-hover:  var(--cx-color-forest-mid);
+  --cx-bg-sidebar-active: var(--cx-color-forest-dark);
+  --cx-bg-input:          #FFFFFF;
+  --cx-bg-muted:          #F8FAFC;
+  --cx-bg-highlight:      var(--cx-color-ochre-pale);
+  --cx-bg-destructive:    #fdf0ed;
+  --cx-bg-success:        #edf5f1;
+  --cx-bg-warning:        var(--cx-color-ochre-pale);
+
+  /* Text */
+  --cx-text-primary:       var(--cx-color-ink);
+  --cx-text-secondary:     var(--cx-color-neutral-600);
+  --cx-text-muted:         var(--cx-color-neutral-500);
+  --cx-text-disabled:      var(--cx-color-neutral-400);
+  --cx-text-inverse:       var(--cx-color-paper);
+  --cx-text-link:          var(--cx-color-forest);
+  --cx-text-link-hover:    var(--cx-color-forest-dark);
+  --cx-text-accent:        var(--cx-color-terracotta);
+  --cx-text-ochre:         var(--cx-color-ochre);
+  --cx-text-success:       #2d6a4f;
+  --cx-text-destructive:   var(--cx-color-brick);
+  --cx-text-sidebar:       rgba(247, 243, 234, 0.90);
+  --cx-text-sidebar-muted: rgba(247, 243, 234, 0.55);
+  --cx-text-on-forest:     var(--cx-color-paper);
+
+  /* Borders */
+  --cx-border-default:     #E2E8F0;
+  --cx-border-strong:      #CBD5E1;
+  --cx-border-muted:       #E2E8F0;
+  --cx-border-focus:       var(--cx-color-forest);
+  --cx-border-accent:      var(--cx-color-terracotta);
+  --cx-border-destructive: var(--cx-color-brick);
+
+  /* Primary actions (Forest) */
+  --cx-btn-primary-bg:       var(--cx-color-forest);
+  --cx-btn-primary-bg-hover: var(--cx-color-forest-dark);
+  --cx-btn-primary-text:     var(--cx-color-paper);
+
+  /* Secondary actions */
+  --cx-btn-secondary-bg:       transparent;
+  --cx-btn-secondary-bg-hover: var(--cx-color-neutral-100);
+  --cx-btn-secondary-text:     var(--cx-color-forest);
+  --cx-btn-secondary-border:   var(--cx-color-forest);
+
+  /* Accent actions (Terracotta) */
+  --cx-btn-accent-bg:       var(--cx-color-terracotta);
+  --cx-btn-accent-bg-hover: var(--cx-color-terracotta-dark);
+  --cx-btn-accent-text:     var(--cx-color-paper);
+
+  /* Ghost */
+  --cx-btn-ghost-bg:       transparent;
+  --cx-btn-ghost-bg-hover: var(--cx-color-neutral-100);
+  --cx-btn-ghost-text:     var(--cx-color-neutral-700);
+
+  /* Destructive */
+  --cx-btn-destructive-bg:       var(--cx-color-brick);
+  --cx-btn-destructive-bg-hover: #7d3326;
+  --cx-btn-destructive-text:     var(--cx-color-paper);
+
+
+  /* ──────────────────────────────────────────────────────────
+   * TYPOGRAPHY TOKENS
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-font-sans:  'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
+  --cx-font-serif: 'Lora', 'Georgia', 'Times New Roman', serif;
+  --cx-font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  --cx-text-display: 2.5rem;
+  --cx-text-h1:      2rem;
+  --cx-text-h2:      1.5rem;
+  --cx-text-h3:      1.25rem;
+  --cx-text-h4:      1.125rem;
+  --cx-text-body:    0.9375rem;
+  --cx-text-body-sm: 0.875rem;
+  --cx-text-caption: 0.8125rem;
+  --cx-text-label:   0.8125rem;
+  --cx-text-button:  0.875rem;
+  --cx-text-nav:     0.875rem;
+
+  --cx-weight-regular:  400;
+  --cx-weight-medium:   500;
+  --cx-weight-semibold: 600;
+  --cx-weight-bold:     700;
+
+  --cx-leading-tight:   1.25;
+  --cx-leading-snug:    1.375;
+  --cx-leading-normal:  1.5;
+  --cx-leading-relaxed: 1.625;
+
+  --cx-tracking-tight:  -0.02em;
+  --cx-tracking-normal:  0;
+  --cx-tracking-wide:    0.04em;
+  --cx-tracking-wider:   0.08em;
+
+
+  /* ──────────────────────────────────────────────────────────
+   * SPACING SCALE  (4px base)
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-space-1:  0.25rem;
+  --cx-space-2:  0.5rem;
+  --cx-space-3:  0.75rem;
+  --cx-space-4:  1rem;
+  --cx-space-5:  1.25rem;
+  --cx-space-6:  1.5rem;
+  --cx-space-8:  2rem;
+  --cx-space-10: 2.5rem;
+  --cx-space-12: 3rem;
+  --cx-space-16: 4rem;
+  --cx-space-20: 5rem;
+
+
+  /* ──────────────────────────────────────────────────────────
+   * BORDER RADIUS
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-radius-sm:   6px;
+  --cx-radius-md:   10px;
+  --cx-radius-lg:   14px;
+  --cx-radius-pill: 999px;
+
+
+  /* ──────────────────────────────────────────────────────────
+   * SHADOWS
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-shadow-sm:    0 1px 3px rgba(32, 37, 34, 0.06), 0 1px 2px rgba(32, 37, 34, 0.04);
+  --cx-shadow-md:    0 4px 12px rgba(32, 37, 34, 0.08), 0 2px 4px rgba(32, 37, 34, 0.04);
+  --cx-shadow-lg:    0 8px 24px rgba(32, 37, 34, 0.10), 0 4px 8px rgba(32, 37, 34, 0.05);
+  --cx-shadow-inner: inset 0 1px 3px rgba(32, 37, 34, 0.06);
+
+
+  /* ──────────────────────────────────────────────────────────
+   * TRANSITIONS
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-duration-fast:   120ms;
+  --cx-duration-normal: 200ms;
+  --cx-duration-slow:   320ms;
+  --cx-ease:            cubic-bezier(0.2, 0, 0, 1);
+  --cx-transition:      var(--cx-duration-normal) var(--cx-ease);
+
+
+  /* ──────────────────────────────────────────────────────────
+   * LAYOUT
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-sidebar-width:      240px;
+  --cx-sidebar-collapsed:  60px;
+  --cx-topbar-height:      56px;
+  --cx-content-max:        100%;
+  --cx-content-gutter:     var(--cx-space-6);
+
+
+  /* ──────────────────────────────────────────────────────────
+   * Z-INDEX SCALE
+   * ────────────────────────────────────────────────────────── */
+
+  --cx-z-sticky:   100;
+  --cx-z-sidebar:  200;
+  --cx-z-topbar:   200;
+  --cx-z-dropdown: 300;
+  --cx-z-modal:    400;
+  --cx-z-toast:    500;
+  --cx-z-tooltip:  600;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cx-duration-fast:   0ms;
+    --cx-duration-normal: 0ms;
+    --cx-duration-slow:   0ms;
+  }
+}
