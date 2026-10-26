@@ -1,8 +1,3 @@
-# ZeroGPU & Hugging Face Supervisor
-spaces>=0.19.4
-huggingface_hub<1.0.0
-gradio>=4.0.0
-
 # Web Framework & ASGI / WSGI
 fastapi>=0.110.0
 uvicorn[standard]>=0.28.0
@@ -17,6 +12,7 @@ psycopg2-binary
 alembic
 python-dotenv
 gunicorn
+huggingface_hub<1.0.0
 
 # AI & Search
 openai>=1.30.0
