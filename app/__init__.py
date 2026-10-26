@@ -51,6 +51,17 @@ def create_app(config_name=None):
     app.register_blueprint(web_bp)
     app.register_blueprint(api_v1_bp)
 
+    # Ensure database schema and default seed data are initialized
+    with app.app_context():
+        try:
+            from .models.user import User
+            db.create_all()
+            if not User.query.filter_by(email="admin@campusx.edu").first():
+                from seed import seed_database
+                seed_database()
+        except Exception as e:
+            app.logger.warning(f"[DB Auto-Init Warning]: {e}")
+
     # Register Middlewares
     from .middleware.security_headers import security_headers
     from .middleware.audit_middleware import audit_middleware
