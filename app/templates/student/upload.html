@@ -1,0 +1,431 @@
+{% set active_page = "upload" %}
+{% extends "base.html" %}
+
+{% block title %}Upload Resource — CampusX{% endblock %}
+{% block topbar_title %}Upload Resource{% endblock %}
+
+{% block sidebar %}
+{% if is_faculty %}
+{% include "faculty/_nav.html" %}
+{% else %}
+{% include "student/_nav.html" %}
+{% endif %}
+{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="{% if is_faculty %}/faculty/dashboard{% else %}/student/dashboard{% endif %}">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="{% if is_faculty %}/faculty/resources{% else %}/student/resources{% endif %}">Resources</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Upload</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- Header -->
+  <div class="page-header" style="max-width:720px;margin:0 auto var(--cx-space-6);">
+    <h1 class="page-header-title">Upload Resource</h1>
+    <p class="page-header-sub">Share lecture notes, question papers, reference sheets, or textbooks with your campus.</p>
+  </div>
+
+  <!-- Main Upload Card -->
+  <div class="card" style="max-width:720px;margin:0 auto;padding:var(--cx-space-8);box-shadow:0 2px 12px rgba(0,0,0,0.04);">
+
+    <!-- Feedback alerts -->
+    <div class="alert alert-error" id="upload-error" role="alert" style="display:none;margin-bottom:var(--cx-space-5);">
+      <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <span id="upload-error-msg"></span>
+    </div>
+
+    <!-- Success state -->
+    <div id="upload-success" style="display:none;text-align:center;padding:var(--cx-space-6) 0;">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(36,72,58,0.10);color:var(--cx-color-forest);display:flex;align-items:center;justify-content:center;margin:0 auto var(--cx-space-4);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:var(--cx-space-2);color:var(--cx-color-forest);">Resource Uploaded &amp; Submitted for Admin Approval!</h2>
+      <p style="color:var(--cx-text-muted);font-size:14px;max-width:480px;margin:0 auto var(--cx-space-4);line-height:1.6;">
+        Your document has been safely uploaded and placed in the <strong>Admin Approval Queue</strong>. Once reviewed and approved by the campus administrator, it will be published across CampusX for all students and faculty to access.
+      </p>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:#FEF3C7;color:#92400E;padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;margin-bottom:var(--cx-space-6);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Current Status: Awaiting Admin Review
+      </div>
+      <div style="display:flex;gap:var(--cx-space-3);justify-content:center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetUploadForm()">Upload Another File</button>
+        <a href="{% if is_faculty %}/faculty/resources{% else %}/student/resources{% endif %}" class="btn btn-primary btn-sm">View Published Resources &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Upload Form -->
+    <form id="upload-form" novalidate>
+
+      <!-- Dropzone Area -->
+      <div class="form-group" style="margin-bottom:var(--cx-space-6);">
+        <label class="form-label" style="font-weight:600;">File <span style="color:var(--cx-color-brick);">*</span></label>
+        
+        <div id="dropzone" style="border:2px dashed var(--cx-border-subtle, #E4E0D8);border-radius:var(--cx-radius-md, 8px);padding:var(--cx-space-8) var(--cx-space-4);text-align:center;background:var(--cx-color-ivory, #FAFAF8);cursor:pointer;transition:border-color 0.2s, background-color 0.2s;">
+          <input type="file" id="file-input" name="file" accept=".pdf,.doc,.docx,.txt,.epub,.ppt,.pptx" style="display:none;" required>
+          
+          <div id="dropzone-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--cx-color-moss);margin-bottom:var(--cx-space-3);">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p style="margin:0 0 6px;font-size:15px;font-weight:500;color:var(--cx-text-primary);">
+              Drag &amp; drop your file here, or <span style="color:var(--cx-text-link);text-decoration:underline;">browse files</span>
+            </p>
+            <p style="margin:0;font-size:12px;color:var(--cx-text-muted);">
+              Supported formats: PDF, DOCX, TXT, EPUB, PPTX (up to 50 MB)
+            </p>
+          </div>
+
+          <!-- Selected File Pill -->
+          <div id="dropzone-selected" style="display:none;align-items:center;justify-content:center;gap:var(--cx-space-3);">
+            <div style="width:36px;height:36px;border-radius:var(--cx-radius-sm);background:rgba(36,72,58,0.12);color:var(--cx-color-forest);display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <div style="text-align:left;">
+              <div id="file-name" style="font-weight:600;font-size:14px;color:var(--cx-text-primary);"></div>
+              <div id="file-size" style="font-size:12px;color:var(--cx-text-muted);"></div>
+            </div>
+            <button type="button" id="remove-file-btn" class="btn btn-ghost btn-icon" style="margin-left:var(--cx-space-2);color:var(--cx-text-muted);" title="Remove file">
+              &times;
+            </button>
+          </div>
+
+        </div>
+        <span class="form-error" id="file-error" role="alert" style="display:none;margin-top:6px;"></span>
+      </div>
+
+      <!-- Resource Title -->
+      <div class="form-group">
+        <label class="form-label" for="res-title" style="font-weight:600;">Title <span style="color:var(--cx-color-brick);">*</span></label>
+        <input class="input" id="res-title" name="title" type="text" placeholder="e.g. Unit 3 - Operating Systems Memory Management Notes" required>
+        <span class="form-error" id="title-error" role="alert" style="display:none;"></span>
+      </div>
+
+      <!-- Grid: Department & Subject -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-4);margin-bottom:var(--cx-space-4);">
+        
+        <!-- Department / Academic Branch -->
+        <div class="form-group">
+          <label class="form-label" for="res-department" style="font-weight:600;">Department / Branch <span style="color:var(--cx-color-brick);">*</span></label>
+          <select class="input" id="res-department" name="department" required>
+            <option value="" selected disabled>Select Department / Branch *</option>
+            <option value="Artificial Intelligence and Machine Learning">AI &amp; ML (Artificial Intelligence &amp; Machine Learning)</option>
+            <option value="Data Science and Analytics">Data Science &amp; Analytics</option>
+            <option value="Computer Science Engineering">CSE (Computer Science Engineering)</option>
+            <option value="Cyber Security and Information Assurance">Cyber Security &amp; Information Assurance</option>
+            <option value="Information Technology">IT (Information Technology)</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+            <option value="Electrical and Electronics Engineering">Electrical Engineering</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+          </select>
+          <span class="form-error" id="dept-error" role="alert" style="display:none;margin-top:4px;"></span>
+        </div>
+
+        <!-- Subject / Course text box -->
+        <div class="form-group">
+          <label class="form-label" for="res-subject" style="font-weight:600;">Subject / Course <span style="color:var(--cx-color-brick);">*</span></label>
+          <input class="input" id="res-subject" name="subject" type="text" placeholder="e.g. Data Structures &amp; Algorithms" required autocomplete="off">
+          <span class="form-error" id="subject-error" role="alert" style="display:none;margin-top:4px;"></span>
+        </div>
+
+      </div>
+
+      <!-- Grid: Faculty / Teacher Name & Category / Type -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-4);margin-bottom:var(--cx-space-4);">
+
+        <!-- Faculty / Teacher Name (MANDATORY) -->
+        <div class="form-group">
+          <label class="form-label" for="res-faculty" style="font-weight:600;">Faculty / Teacher Name <span style="color:var(--cx-color-brick);">*</span></label>
+          <input class="input" id="res-faculty" name="faculty_name" type="text" placeholder="e.g. Prof. Rajesh Kulkarni" required autocomplete="off">
+          <span class="form-error" id="faculty-error" role="alert" style="display:none;margin-top:4px;"></span>
+          <span style="font-size:11.5px;color:var(--cx-text-muted);margin-top:3px;display:block;">Mandatory: enter faculty / teacher name</span>
+        </div>
+
+        <!-- Resource Type -->
+        <div class="form-group">
+          <label class="form-label" for="res-type" style="font-weight:600;">Category / Type <span style="color:var(--cx-color-brick);">*</span></label>
+          <select class="input" id="res-type" name="resource_type" required>
+            <option value="NOTE" selected>Lecture Notes &amp; Summaries</option>
+            <option value="QUESTION_PAPER">Question Paper / Exam</option>
+            <option value="REFERENCE">Reference Guide</option>
+            <option value="BOOK">Textbook / Chapter</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="form-label" for="res-desc" style="font-weight:600;">Description <span style="font-weight:normal;color:var(--cx-text-muted);">(optional)</span></label>
+        <textarea class="input" id="res-desc" name="description" rows="3" placeholder="Provide a brief summary or syllabus topic tags to help students search..."></textarea>
+      </div>
+
+      <!-- Action Row -->
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:var(--cx-space-3);margin-top:var(--cx-space-6);">
+        <a href="{% if is_faculty %}/faculty/resources{% else %}/student/resources{% endif %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary" id="submit-upload-btn" style="min-width:140px;justify-content:center;">
+          <span id="upload-btn-text">Upload Resource</span>
+          <svg id="upload-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;animation:spin 0.8s linear infinite;margin-left:6px;" aria-hidden="true">
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-opacity="0.25"/>
+            <path d="M21 12a9 9 0 00-9-9" stroke-opacity="1"/>
+          </svg>
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+#dropzone.dragover {
+  border-color: var(--cx-color-forest, #24483A) !important;
+  background-color: rgba(36, 72, 58, 0.05) !important;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // Auth guard
+  if (!window.CampusX || !CampusX.auth || !CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname));
+    return;
+  }
+
+  const dropzone        = document.getElementById('dropzone');
+  const fileInput       = document.getElementById('file-input');
+  const dropEmpty       = document.getElementById('dropzone-empty');
+  const dropSelected    = document.getElementById('dropzone-selected');
+  const fileNameEl      = document.getElementById('file-name');
+  const fileSizeEl      = document.getElementById('file-size');
+  const removeFileBtn   = document.getElementById('remove-file-btn');
+  const form            = document.getElementById('upload-form');
+  const titleEl         = document.getElementById('res-title');
+  const deptEl          = document.getElementById('res-department');
+  const subjEl          = document.getElementById('res-subject');
+  const facultyEl       = document.getElementById('res-faculty');
+  const typeEl          = document.getElementById('res-type');
+  const descEl          = document.getElementById('res-desc');
+  const btn             = document.getElementById('submit-upload-btn');
+  const btnText         = document.getElementById('upload-btn-text');
+  const spinner         = document.getElementById('upload-spinner');
+  const errBanner       = document.getElementById('upload-error');
+  const errMsg          = document.getElementById('upload-error-msg');
+  const successBox      = document.getElementById('upload-success');
+
+  let selectedFile = null;
+
+  // Dropzone click -> trigger input
+  dropzone.addEventListener('click', (e) => {
+    if (e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) {
+      fileInput.click();
+    }
+  });
+
+  // Drag and drop events
+  ['dragenter', 'dragover'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length) {
+      handleFileSelected(dt.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files.length) {
+      handleFileSelected(fileInput.files[0]);
+    }
+  });
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function handleFileSelected(file) {
+    clearError('file-error');
+    selectedFile = file;
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = formatBytes(file.size);
+    dropEmpty.style.display = 'none';
+    dropSelected.style.display = 'flex';
+
+    // Auto-populate title if empty
+    if (!titleEl.value.trim()) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      titleEl.value = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+    }
+  }
+
+  removeFileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    dropEmpty.style.display = 'block';
+    dropSelected.style.display = 'none';
+  });
+
+  // Department selection event
+  deptEl.addEventListener('change', () => {
+    clearError('dept-error');
+  });
+
+  // Subject text input event
+  subjEl.addEventListener('input', () => {
+    clearError('subject-error');
+  });
+
+  // Faculty text input event
+  facultyEl.addEventListener('input', () => {
+    clearError('faculty-error');
+  });
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+  function clearError(id) {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; }
+  }
+
+  window.resetUploadForm = function () {
+    form.reset();
+    selectedFile = null;
+    dropEmpty.style.display = 'block';
+    dropSelected.style.display = 'none';
+    if (subjEl) subjEl.value = '';
+    if (facultyEl) facultyEl.value = '';
+    errBanner.style.display = 'none';
+    successBox.style.display = 'none';
+    form.style.display = 'block';
+    btn.disabled = false;
+    btnText.textContent = 'Upload Resource';
+    spinner.style.display = 'none';
+  };
+
+  // Form submit
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errBanner.style.display = 'none';
+
+    let valid = true;
+    if (!selectedFile) {
+      showError('file-error', 'Please choose or drag a file to upload.');
+      valid = false;
+    }
+    if (!titleEl.value.trim()) {
+      showError('title-error', 'Please enter a title for the resource.');
+      valid = false;
+    } else {
+      clearError('title-error');
+    }
+
+    if (!deptEl.value) {
+      showError('dept-error', 'Please select a department / branch.');
+      valid = false;
+    } else {
+      clearError('dept-error');
+    }
+
+    const finalSubject = subjEl.value.trim();
+    if (!finalSubject) {
+      showError('subject-error', 'Please enter a subject / course name.');
+      valid = false;
+    } else {
+      clearError('subject-error');
+    }
+
+    const facultyVal = facultyEl.value.trim();
+    if (!facultyVal) {
+      showError('faculty-error', 'Faculty / Teacher name is mandatory.');
+      valid = false;
+    } else {
+      clearError('faculty-error');
+    }
+
+    if (!valid) return;
+
+    btn.disabled = true;
+    btnText.textContent = 'Uploading…';
+    spinner.style.display = 'inline-block';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('title', titleEl.value.trim());
+    formData.append('department_name', deptEl.value);
+    formData.append('department', deptEl.value);
+    formData.append('subject', finalSubject);
+    formData.append('subject_name', finalSubject);
+    formData.append('faculty_name', facultyVal);
+    formData.append('teacher_name', facultyVal);
+    formData.append('require_faculty', '1');
+    formData.append('resource_type', typeEl.value);
+    formData.append('description', descEl.value.trim());
+
+    try {
+      const res = await fetch('/api/v1/resources/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + CampusX.auth.getAccessToken()
+        },
+        body: formData
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error?.message || json.message || 'Upload failed');
+      }
+
+      // Success
+      form.style.display = 'none';
+      successBox.style.display = 'block';
+      if (window.CampusX && CampusX.toast) {
+        CampusX.toast('Resource uploaded successfully!', 'success');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btnText.textContent = 'Upload Resource';
+      spinner.style.display = 'none';
+      errMsg.textContent = err.message || 'An error occurred during upload. Please try again.';
+      errBanner.style.display = 'flex';
+    }
+  });
+
+})();
+</script>
+{% endblock %}

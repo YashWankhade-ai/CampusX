@@ -1,13 +1,1223 @@
+{% set active_page = "ai_chat" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}CampusX AI — CampusX{% endblock %}
+{% block topbar_title %}CampusX AI{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Modern SaaS UI for AI Chat Citations & Output */
+.cx-ai-citations-panel {
+  margin-top: 14px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--cx-radius-md, 8px);
+  padding: 12px 14px;
+}
+
+.cx-ai-citations-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1E293B;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.cx-ai-citations-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cx-ai-cit-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: all 0.15s ease;
+}
+
+.cx-ai-cit-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.cx-ai-cit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cx-ai-cit-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(36,72,58,0.12);
+  color: var(--cx-color-forest, #24483A);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cx-ai-cit-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.cx-ai-cit-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cx-color-forest, #24483A);
+  text-decoration: none;
+}
+
+.cx-ai-cit-link:hover {
+  text-decoration: underline;
+}
+
+.cx-ai-cit-snippet {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #475569;
+  font-style: italic;
+  background: #F1F5F9;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+</style>
 {% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
 {% block content %}
-<div class="glass-panel">
-    <h1>Student: Ai_chat</h1>
-    <p>Welcome to the student interface.</p>
+<div class="ai-workspace" id="ai-workspace">
+
+  <!-- ── Desktop mode sidebar ─────────────────────────────────── -->
+  <aside class="ai-sidebar" aria-label="AI workspace modes">
+
+    <div class="ai-mode-header">
+      <div class="ai-mode-label">Mode</div>
+    </div>
+
+    <nav class="ai-mode-list" role="tablist" aria-label="AI modes">
+      <button class="ai-mode-btn active"
+              role="tab"
+              aria-selected="true"
+              aria-controls="ai-panel-general"
+              id="ai-tab-general"
+              data-mode="general">
+        <svg class="ai-mode-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9.5 2a7.5 7.5 0 100 15 7.5 7.5 0 000-15zM9.5 6v4l2.5 2.5"/>
+        </svg>
+        General Q&amp;A
+      </button>
+
+      <button class="ai-mode-btn"
+              role="tab"
+              aria-selected="false"
+              aria-controls="ai-panel-pdf"
+              id="ai-tab-pdf"
+              data-mode="pdf">
+        <svg class="ai-mode-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M4 2h9l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/>
+          <path d="M13 2v4h4"/>
+          <path d="M7 10h7M7 13h5"/>
+        </svg>
+        Chat with PDF
+      </button>
+
+      <button class="ai-mode-btn"
+              role="tab"
+              aria-selected="false"
+              aria-controls="ai-panel-multi"
+              id="ai-tab-multi"
+              data-mode="multi">
+        <svg class="ai-mode-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <rect x="2" y="3" width="11" height="14" rx="1"/>
+          <rect x="7" y="1" width="11" height="14" rx="1"/>
+          <path d="M10 8h4M10 11h3"/>
+        </svg>
+        Multi-PDF Chat
+      </button>
+    </nav>
+
+    <!-- Context panel — shows selected resources below mode list -->
+    <div class="ai-context-panel" id="ai-context-panel" aria-live="polite">
+      <!-- populated by JS -->
+    </div>
+
+  </aside>
+
+  <!-- ── Mobile tabs ──────────────────────────────────────────── -->
+  <div class="ai-mobile-tabs" role="tablist" aria-label="AI modes">
+    <div class="ai-mobile-tabs-inner">
+      <button class="ai-mobile-tab active" data-mode="general" role="tab" aria-selected="true">General Q&amp;A</button>
+      <button class="ai-mobile-tab" data-mode="pdf" role="tab" aria-selected="false">Chat with PDF</button>
+      <button class="ai-mobile-tab" data-mode="multi" role="tab" aria-selected="false">Multi-PDF</button>
+    </div>
+  </div>
+
+  <!-- ── Main content area ────────────────────────────────────── -->
+  <main class="ai-main" id="ai-main">
+
+    <!-- ── GENERAL Q&A PANEL ─────────────────────────────────── -->
+    <section id="ai-panel-general" role="tabpanel" aria-labelledby="ai-tab-general">
+
+      <!-- Conversation area -->
+      <div class="ai-conversation" id="general-conversation" aria-live="polite" aria-label="Conversation">
+        <!-- Empty state -->
+        <div class="ai-empty" id="general-empty">
+          <div class="ai-empty-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7a5a10" stroke-width="1.75">
+              <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/>
+            </svg>
+          </div>
+          <h2 class="ai-empty-title">CampusX AI</h2>
+          <p class="ai-empty-subtitle">Learn smarter with your academic resources. Ask anything — get grounded, cited answers from your institution's approved materials.</p>
+          <div class="ai-starter-grid" role="list">
+            <button class="ai-starter-btn" role="listitem" data-prompt="Explain this concept simply">
+              "Explain this concept simply"
+            </button>
+            <button class="ai-starter-btn" role="listitem" data-prompt="Summarize the key ideas">
+              "Summarize the key ideas"
+            </button>
+            <button class="ai-starter-btn" role="listitem" data-prompt="Help me understand this topic">
+              "Help me understand this topic"
+            </button>
+            <button class="ai-starter-btn" role="listitem" data-prompt="Create practice questions">
+              "Create practice questions"
+            </button>
+          </div>
+        </div>
+
+        <!-- Conversation turns injected here by JS -->
+        <div class="ai-conversation-inner" id="general-turns" aria-live="polite"></div>
+
+      </div>
+
+      <!-- Composer -->
+      <div class="ai-composer-wrap" id="general-composer">
+        <div class="ai-composer-inner">
+          <div class="ai-composer-input-row">
+            <textarea
+              class="ai-composer-textarea"
+              id="general-input"
+              placeholder="Ask CampusX AI…"
+              rows="1"
+              aria-label="Ask CampusX AI"
+              maxlength="2000"
+              autocomplete="off"
+              spellcheck="true"></textarea>
+            <button class="ai-composer-send" id="general-send" aria-label="Send message" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+              </svg>
+            </button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="ai-composer-hint">Enter to send · Shift+Enter for new line</span>
+            <span class="ai-composer-char-count" id="general-char-count" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ── CHAT WITH PDF PANEL ───────────────────────────────── -->
+    <section id="ai-panel-pdf" role="tabpanel" aria-labelledby="ai-tab-pdf" hidden>
+
+      <!-- Resource picker (shown before session starts) -->
+      <div id="pdf-picker-view">
+        <div class="ai-picker-wrap">
+          <h2 style="font-size:var(--cx-text-h4);font-weight:var(--cx-weight-bold);color:var(--cx-text-primary);margin-bottom:var(--cx-space-2);">
+            Select a resource
+          </h2>
+          <p style="font-size:var(--cx-text-body-sm);color:var(--cx-text-muted);margin-bottom:var(--cx-space-4);">
+            Choose an approved resource to chat with.
+          </p>
+
+          <div class="ai-picker-search-wrap">
+            <svg class="ai-picker-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input class="ai-picker-search"
+                   id="pdf-picker-search"
+                   type="search"
+                   placeholder="Search resources…"
+                   aria-label="Search resources"
+                   autocomplete="off">
+          </div>
+
+          <div id="pdf-picker-list" class="ai-picker-list" aria-label="Available resources">
+            <div style="padding:var(--cx-space-6);text-align:center;color:var(--cx-text-muted);font-size:var(--cx-text-body-sm);" role="status">
+              Loading resources…
+            </div>
+          </div>
+
+          <div id="pdf-picker-error" class="ai-error-msg" hidden aria-live="polite"></div>
+
+          <div style="margin-top:var(--cx-space-5);display:flex;justify-content:flex-end;">
+            <button class="btn btn-primary" id="pdf-start-btn" disabled>
+              Chat with this resource
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversation view (shown after session starts) -->
+      <div id="pdf-chat-view" hidden style="display:flex;flex-direction:column;height:100%;flex:1;">
+
+        <div class="ai-conversation" id="pdf-conversation" aria-live="polite" aria-label="PDF Chat conversation">
+          <div class="ai-empty" id="pdf-empty">
+            <div class="ai-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7a5a10" stroke-width="1.75">
+                <path d="M4 2h9l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/>
+                <path d="M13 2v4h4"/><path d="M7 10h7M7 13h5"/>
+              </svg>
+            </div>
+            <h2 class="ai-empty-title" id="pdf-resource-title">Document loaded</h2>
+            <p class="ai-empty-subtitle">Ask anything about this resource. Answers are grounded in the document's content.</p>
+          </div>
+          <div class="ai-conversation-inner" id="pdf-turns" aria-live="polite"></div>
+        </div>
+
+        <div class="ai-composer-wrap">
+          <div class="ai-composer-inner">
+            <div class="ai-composer-input-row">
+              <textarea
+                class="ai-composer-textarea"
+                id="pdf-input"
+                placeholder="Ask about this resource…"
+                rows="1"
+                aria-label="Ask about this PDF resource"
+                maxlength="2000"
+                autocomplete="off"
+                spellcheck="true"></textarea>
+              <button class="ai-composer-send" id="pdf-send" aria-label="Send message" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="ai-composer-hint">Enter to send · Shift+Enter for new line</span>
+              <span class="ai-composer-char-count" id="pdf-char-count" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ── MULTI-PDF PANEL ───────────────────────────────────── -->
+    <section id="ai-panel-multi" role="tabpanel" aria-labelledby="ai-tab-multi" hidden>
+
+      <!-- Multi-resource picker (shown before session starts) -->
+      <div id="multi-picker-view">
+        <div class="ai-picker-wrap">
+          <h2 style="font-size:var(--cx-text-h4);font-weight:var(--cx-weight-bold);color:var(--cx-text-primary);margin-bottom:var(--cx-space-2);">
+            Select resources
+          </h2>
+          <p style="font-size:var(--cx-text-body-sm);color:var(--cx-text-muted);margin-bottom:var(--cx-space-4);">
+            Select up to 10 approved resources to chat across.
+          </p>
+
+          <div class="ai-picker-count-bar">
+            <span><span class="ai-picker-count" id="multi-selected-count">0</span> / 10 selected</span>
+            <span class="ai-picker-limit" id="multi-limit-hint"></span>
+          </div>
+
+          <div class="ai-picker-search-wrap">
+            <svg class="ai-picker-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input class="ai-picker-search"
+                   id="multi-picker-search"
+                   type="search"
+                   placeholder="Search resources…"
+                   aria-label="Search resources"
+                   autocomplete="off">
+          </div>
+
+          <div id="multi-picker-list" class="ai-picker-list" aria-label="Available resources">
+            <div style="padding:var(--cx-space-6);text-align:center;color:var(--cx-text-muted);font-size:var(--cx-text-body-sm);" role="status">
+              Loading resources…
+            </div>
+          </div>
+
+          <div id="multi-picker-error" class="ai-error-msg" hidden aria-live="polite"></div>
+
+          <div style="margin-top:var(--cx-space-5);display:flex;justify-content:flex-end;">
+            <button class="btn btn-primary" id="multi-start-btn" disabled>
+              Start Multi-PDF Chat
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-PDF conversation view -->
+      <div id="multi-chat-view" hidden style="display:flex;flex-direction:column;height:100%;flex:1;">
+
+        <div class="ai-conversation" id="multi-conversation" aria-live="polite" aria-label="Multi-PDF Chat conversation">
+          <div class="ai-empty" id="multi-empty">
+            <div class="ai-empty-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="#7a5a10" stroke-width="1.5">
+                <rect x="2" y="3" width="11" height="14" rx="1"/>
+                <rect x="7" y="1" width="11" height="14" rx="1"/>
+              </svg>
+            </div>
+            <h2 class="ai-empty-title">Multi-PDF Chat</h2>
+            <p class="ai-empty-subtitle" id="multi-resource-summary">Ask questions across all selected resources.</p>
+          </div>
+          <div class="ai-conversation-inner" id="multi-turns" aria-live="polite"></div>
+        </div>
+
+        <div class="ai-composer-wrap">
+          <div class="ai-composer-inner">
+            <div class="ai-composer-input-row">
+              <textarea
+                class="ai-composer-textarea"
+                id="multi-input"
+                placeholder="Ask across your selected resources…"
+                rows="1"
+                aria-label="Ask across selected resources"
+                maxlength="2000"
+                autocomplete="off"
+                spellcheck="true"></textarea>
+              <button class="ai-composer-send" id="multi-send" aria-label="Send message" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="ai-composer-hint">Enter to send · Shift+Enter for new line</span>
+              <span class="ai-composer-char-count" id="multi-char-count" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/ai.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Auth guard ───────────────────────────────────────────────
+  if (window.CampusX && CampusX.auth && typeof CampusX.auth.isAuthenticated === 'function') {
+    if (!CampusX.auth.isAuthenticated() && !document.cookie.includes('access_token=')) {
+      window.location.replace('/login?next=/student/ai-chat');
+      return;
+    }
+  }
+
+  // ── Constants ────────────────────────────────────────────────
+  const MAX_Q = (window.CampusX && CampusX.ai && CampusX.ai.MAX_QUERY_LEN) || 2000;
+  const MAX_MULTI = (window.CampusX && CampusX.ai && CampusX.ai.MAX_MULTI_PDF) || 10;
+
+  // ── State ────────────────────────────────────────────────────
+  let currentMode   = 'general';
+  let generalBusy   = false;
+  let pdfBusy       = false;
+  let multibusy     = false;
+
+  let pdfSessionId  = null;
+  let pdfResourceId = null;
+  let pdfSelectedId = null;   // Pending selection in picker
+
+  let multiSessionId = null;
+  let multiSelectedIds = new Set();
+
+  const preloaded = {{ (preloaded_resources or []) | tojson | safe }};
+  let allResources = (Array.isArray(preloaded) && preloaded.length > 0) ? preloaded : [];     // Cache for picker
+  let lastRetryFn   = null;   // Last failed action for retry
+
+  // ── Mode switching ───────────────────────────────────────────
+  const MODES = ['general', 'pdf', 'multi'];
+
+  function setMode(mode) {
+    if (!MODES.includes(mode)) return;
+    currentMode = mode;
+
+    // Desktop tabs
+    document.querySelectorAll('.ai-mode-btn').forEach(btn => {
+      const active = btn.dataset.mode === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+
+    // Mobile tabs
+    document.querySelectorAll('.ai-mobile-tab').forEach(btn => {
+      const active = btn.dataset.mode === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+
+    // Panels
+    document.getElementById('ai-panel-general').hidden = (mode !== 'general');
+    document.getElementById('ai-panel-pdf').hidden     = (mode !== 'pdf');
+    document.getElementById('ai-panel-multi').hidden   = (mode !== 'multi');
+
+    updateContextPanel();
+
+    // Load resources when PDF or multi mode entered for the first time
+    if ((mode === 'pdf' || mode === 'multi') && allResources.length === 0) {
+      loadResources();
+    }
+  }
+
+  document.querySelectorAll('.ai-mode-btn, .ai-mobile-tab').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+
+  // ── Context panel ────────────────────────────────────────────
+  function updateContextPanel() {
+    const panel = document.getElementById('ai-context-panel');
+    if (!panel) return;
+
+    if (currentMode === 'general') {
+      panel.innerHTML = '<p style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);">Searches across all your institution\'s approved resources.</p>';
+
+    } else if (currentMode === 'pdf') {
+      if (!pdfResourceId) {
+        panel.innerHTML = '<p style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);">No resource selected.</p>';
+      } else {
+        const title = document.getElementById('pdf-resource-title')
+          ? document.getElementById('pdf-resource-title').textContent : 'Resource';
+        panel.innerHTML = `
+          <div class="ai-context-title">Document</div>
+          <div class="ai-context-resource">
+            <div class="ai-context-resource-title">${escHtml(title)}</div>
+            <div class="ai-context-resource-meta">Single PDF session</div>
+          </div>
+          <button class="ai-context-change" id="ctx-pdf-change">Change resource</button>`;
+        document.getElementById('ctx-pdf-change').addEventListener('click', () => {
+          pdfSessionId = null; pdfResourceId = null; pdfSelectedId = null;
+          showPdfPickerView(); updateContextPanel();
+        });
+      }
+
+    } else if (currentMode === 'multi') {
+      if (multiSelectedIds.size === 0) {
+        panel.innerHTML = '<p style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);">No resources selected.</p>';
+      } else {
+        const names = allResources
+          .filter(r => multiSelectedIds.has(r.id))
+          .map(r => r.title);
+        const items = names.map(n => `
+          <div class="ai-context-resource">
+            <div class="ai-context-resource-title">${escHtml(n)}</div>
+          </div>`).join('');
+        panel.innerHTML = `
+          <div class="ai-context-title">${names.length} / ${MAX_MULTI} resources</div>
+          ${items}
+          ${multiSessionId ? `<button class="ai-context-change" id="ctx-multi-change">Change resources</button>` : ''}`;
+        const changeBtn = document.getElementById('ctx-multi-change');
+        if (changeBtn) {
+          changeBtn.addEventListener('click', () => {
+            multiSessionId = null; multiSelectedIds.clear();
+            showMultiPickerView(); updateContextPanel();
+          });
+        }
+      }
+    }
+  }
+
+
+  // ── Resource loading for pickers ─────────────────────────────
+  async function loadResources() {
+    if (allResources.length > 0) {
+      renderPdfPicker('');
+      renderMultiPicker('');
+    }
+    try {
+      const listFn = (window.CampusX && CampusX.ai && typeof CampusX.ai.listResources === 'function')
+        ? CampusX.ai.listResources
+        : async (opts) => {
+            const res = await fetch('/api/v1/resources?limit=50', { credentials: 'same-origin' });
+            return await res.json();
+          };
+      const res = await listFn({ limit: 50 });
+      const items = (res.data || []).map(r => ({
+        id: r.id,
+        title: r.title || 'Untitled',
+        material_type: r.material_type || '',
+        subject_name: r.subject_name || '',
+        department_name: r.department_name || '',
+        faculty_name: r.faculty_name || r.contributor_name || '',
+      }));
+      if (items.length > 0 || allResources.length === 0) {
+        allResources = items;
+      }
+    } catch (err) {
+      // Keep existing allResources if already populated
+    }
+    renderPdfPicker('');
+    renderMultiPicker('');
+  }
+
+  function filterResources(query) {
+    if (!query) return allResources;
+    const q = query.toLowerCase();
+    return allResources.filter(r =>
+      (r.title || '').toLowerCase().includes(q) ||
+      (r.material_type || '').toLowerCase().includes(q) ||
+      (r.subject_name || '').toLowerCase().includes(q) ||
+      (r.department_name || '').toLowerCase().includes(q) ||
+      (r.faculty_name || '').toLowerCase().includes(q)
+    );
+  }
+
+  // ─ PDF Picker ─────────────────────────────────────────────────
+  function renderPdfPicker(query) {
+    const list = document.getElementById('pdf-picker-list');
+    if (!list) return;
+    const items = filterResources(query);
+    if (items.length === 0) {
+      list.innerHTML = '<div style="padding:var(--cx-space-6);text-align:center;color:var(--cx-text-muted);font-size:var(--cx-text-body-sm);">No resources found.</div>';
+      return;
+    }
+    list.innerHTML = items.map(r => `
+      <button class="ai-picker-item${pdfSelectedId === r.id ? ' selected' : ''}"
+              data-id="${escHtml(r.id)}"
+              data-title="${escHtml(r.title)}"
+              aria-pressed="${pdfSelectedId === r.id}"
+              type="button">
+        <div class="ai-picker-check" aria-hidden="true">
+          ${pdfSelectedId === r.id ? checkSvg() : ''}
+        </div>
+        <div class="ai-picker-item-body">
+          <div class="ai-picker-item-title">${escHtml(r.title)}</div>
+          <div class="ai-picker-item-meta">${escHtml(typeLabel(r.material_type))}</div>
+        </div>
+      </button>`).join('');
+
+    list.querySelectorAll('.ai-picker-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        pdfSelectedId = btn.dataset.id;
+        renderPdfPicker(document.getElementById('pdf-picker-search').value);
+        document.getElementById('pdf-start-btn').disabled = false;
+      });
+    });
+  }
+
+  // ─ Multi Picker ───────────────────────────────────────────────
+  function renderMultiPicker(query) {
+    const list = document.getElementById('multi-picker-list');
+    if (!list) return;
+    const items = filterResources(query);
+    if (items.length === 0) {
+      list.innerHTML = '<div style="padding:var(--cx-space-6);text-align:center;color:var(--cx-text-muted);font-size:var(--cx-text-body-sm);">No resources found.</div>';
+      return;
+    }
+    list.innerHTML = items.map(r => {
+      const sel = multiSelectedIds.has(r.id);
+      return `<button class="ai-picker-item${sel ? ' selected' : ''}"
+                      data-id="${escHtml(r.id)}"
+                      aria-pressed="${sel}"
+                      type="button">
+        <div class="ai-picker-check" aria-hidden="true">
+          ${sel ? checkSvg() : ''}
+        </div>
+        <div class="ai-picker-item-body">
+          <div class="ai-picker-item-title">${escHtml(r.title)}</div>
+          <div class="ai-picker-item-meta">${escHtml(typeLabel(r.material_type))}</div>
+        </div>
+      </button>`;
+    }).join('');
+
+    list.querySelectorAll('.ai-picker-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        if (multiSelectedIds.has(id)) {
+          multiSelectedIds.delete(id);
+        } else if (multiSelectedIds.size < MAX_MULTI) {
+          multiSelectedIds.add(id);
+        } else {
+          // At limit — show hint
+          const hint = document.getElementById('multi-limit-hint');
+          if (hint) { hint.textContent = `Maximum ${MAX_MULTI} resources`; hint.classList.add('at-limit'); }
+          return;
+        }
+        updateMultiCountUI();
+        renderMultiPicker(document.getElementById('multi-picker-search').value);
+      });
+    });
+  }
+
+  function updateMultiCountUI() {
+    const count = multiSelectedIds.size;
+    const countEl = document.getElementById('multi-selected-count');
+    const hintEl  = document.getElementById('multi-limit-hint');
+    const startBtn = document.getElementById('multi-start-btn');
+    if (countEl) countEl.textContent = String(count);
+    if (hintEl) {
+      if (count >= MAX_MULTI) { hintEl.textContent = 'Maximum reached'; hintEl.classList.add('at-limit'); }
+      else { hintEl.textContent = ''; hintEl.classList.remove('at-limit'); }
+    }
+    if (startBtn) startBtn.disabled = count === 0;
+  }
+
+  // ── Picker search wiring ──────────────────────────────────────
+  const pdfSearch = document.getElementById('pdf-picker-search');
+  if (pdfSearch) {
+    pdfSearch.addEventListener('input', () => renderPdfPicker(pdfSearch.value.trim()));
+  }
+  const multiSearch = document.getElementById('multi-picker-search');
+  if (multiSearch) {
+    multiSearch.addEventListener('input', () => renderMultiPicker(multiSearch.value.trim()));
+  }
+
+  // ── Picker → session transitions ─────────────────────────────
+  function showPdfPickerView() {
+    document.getElementById('pdf-picker-view').hidden = false;
+    document.getElementById('pdf-chat-view').hidden   = true;
+    clearConversation('pdf');
+  }
+
+  function showPdfChatView() {
+    document.getElementById('pdf-picker-view').hidden = true;
+    document.getElementById('pdf-chat-view').hidden   = false;
+    document.getElementById('pdf-send').disabled = false;
+    updateContextPanel();
+  }
+
+  function showMultiPickerView() {
+    document.getElementById('multi-picker-view').hidden = false;
+    document.getElementById('multi-chat-view').hidden   = true;
+    clearConversation('multi');
+  }
+
+  function showMultiChatView() {
+    document.getElementById('multi-picker-view').hidden = true;
+    document.getElementById('multi-chat-view').hidden   = false;
+    document.getElementById('multi-send').disabled = false;
+    updateContextPanel();
+  }
+
+  // PDF start button
+  const pdfStartBtn = document.getElementById('pdf-start-btn');
+  if (pdfStartBtn) {
+    pdfStartBtn.addEventListener('click', async () => {
+      if (!pdfSelectedId) return;
+      pdfStartBtn.disabled = true;
+      pdfStartBtn.textContent = 'Starting session…';
+      try {
+        const session = await CampusX.ai.createPdfSession(pdfSelectedId);
+        pdfSessionId  = session.session_id;
+        pdfResourceId = session.resource_id;
+        const titleEl = document.getElementById('pdf-resource-title');
+        if (titleEl) titleEl.textContent = session.resource_title || 'Document';
+        showPdfChatView();
+      } catch (err) {
+        showPickerError('pdf', CampusX.ai.friendlyError(err));
+        pdfStartBtn.disabled = false;
+        pdfStartBtn.textContent = 'Chat with this resource';
+      }
+    });
+  }
+
+  // Multi-PDF start button
+  const multiStartBtn = document.getElementById('multi-start-btn');
+  if (multiStartBtn) {
+    multiStartBtn.addEventListener('click', async () => {
+      if (multiSelectedIds.size === 0) return;
+      multiStartBtn.disabled = true;
+      multiStartBtn.textContent = 'Starting session…';
+      try {
+        const ids = Array.from(multiSelectedIds);
+        const session = await CampusX.ai.createMultiPdfSession(ids);
+        multiSessionId = session.session_id;
+
+        const names = allResources
+          .filter(r => ids.includes(r.id))
+          .map(r => r.title)
+          .join(', ');
+        const summaryEl = document.getElementById('multi-resource-summary');
+        if (summaryEl) summaryEl.textContent = `Ask across: ${names}`;
+        showMultiChatView();
+      } catch (err) {
+        showPickerError('multi', CampusX.ai.friendlyError(err));
+        multiStartBtn.disabled = false;
+        multiStartBtn.textContent = 'Start Multi-PDF Chat';
+      }
+    });
+  }
+
+  function showPickerError(mode, msg) {
+    const errEl = document.getElementById(mode + '-picker-error');
+    if (!errEl) return;
+    errEl.hidden = false;
+    errEl.textContent = msg;
+  }
+
+
+  // ── Conversation rendering ────────────────────────────────────
+  function clearConversation(mode) {
+    const turnsEl = document.getElementById(mode + '-turns');
+    if (turnsEl) turnsEl.innerHTML = '';
+    const emptyEl = document.getElementById(mode + '-empty');
+    if (emptyEl) emptyEl.style.display = '';
+  }
+
+  function hideEmpty(mode) {
+    const emptyEl = document.getElementById(mode + '-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+  }
+
+  function appendUserMessage(mode, text) {
+    hideEmpty(mode);
+    const turns = document.getElementById(mode + '-turns');
+    if (!turns) return;
+    const turn = document.createElement('div');
+    turn.className = 'ai-turn';
+    turn.innerHTML = `
+      <div class="user-message">
+        <div class="user-message-bubble" aria-label="Your message">${escHtml(text)}</div>
+      </div>`;
+    turns.appendChild(turn);
+    return turn;
+  }
+
+  function appendThinking(mode) {
+    const turns = document.getElementById(mode + '-turns');
+    if (!turns) return null;
+    const el = document.createElement('div');
+    el.className = 'ai-thinking';
+    el.setAttribute('aria-label', 'CampusX AI is thinking');
+    el.setAttribute('role', 'status');
+    el.innerHTML = `
+      <div class="ai-thinking-avatar" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a5a10" stroke-width="2">
+          <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/>
+        </svg>
+      </div>
+      <div class="ai-thinking-dots" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <span class="ai-thinking-text">CampusX AI is thinking…</span>`;
+    turns.appendChild(el);
+    scrollToBottom(mode);
+    return el;
+  }
+
+  function removeThinking(el) {
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function appendAIMessage(mode, turn, data, query) {
+    // data: { answer|response, citations, confidence_level, grounding_status }
+    const answer = data.answer || data.response || '';
+
+    // Format content: escape then convert newlines to paragraphs
+    const formatted = formatAIText(answer);
+
+    const citations = Array.isArray(data.citations) ? data.citations : [];
+    const citHtml = buildCitationsHtml(citations);
+    const qualityHtml = buildQualityHtml(data);
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'ai-message';
+    msgEl.setAttribute('role', 'article');
+    msgEl.setAttribute('aria-label', 'CampusX AI response');
+    msgEl.innerHTML = `
+      <div class="ai-message-avatar" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7a5a10" stroke-width="2">
+          <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/>
+        </svg>
+      </div>
+      <div class="ai-message-body">
+        <div class="ai-message-content">${formatted}</div>
+        ${qualityHtml}
+        ${citHtml}
+      </div>`;
+
+    if (turn) {
+      turn.appendChild(msgEl);
+    } else {
+      const turns = document.getElementById(mode + '-turns');
+      if (turns) turns.appendChild(msgEl);
+    }
+
+    // Wire up citation toggle
+    const toggleBtn = msgEl.querySelector('.ai-citations-toggle');
+    const citList   = msgEl.querySelector('.ai-citations-list');
+    if (toggleBtn && citList) {
+      toggleBtn.addEventListener('click', () => {
+        const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+        toggleBtn.setAttribute('aria-expanded', String(!expanded));
+        citList.hidden = expanded;
+      });
+    }
+
+    scrollToBottom(mode);
+    return msgEl;
+  }
+
+  function appendInlineError(mode, turn, errMsg, retryFn) {
+    const el = document.createElement('div');
+    el.className = 'ai-error-msg';
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `
+      <span>${escHtml(errMsg)}</span>
+      ${retryFn ? '<button type="button" aria-label="Retry request">Retry</button>' : ''}`;
+    if (retryFn) {
+      el.querySelector('button').addEventListener('click', () => {
+        el.remove(); retryFn();
+      });
+    }
+    if (turn) { turn.appendChild(el); }
+    else {
+      const turns = document.getElementById(mode + '-turns');
+      if (turns) turns.appendChild(el);
+    }
+    scrollToBottom(mode);
+  }
+
+
+  // ── Format AI text (no raw HTML trust) ───────────────────────
+  function formatAIText(text) {
+    if (!text) return '';
+    // Escape first, then convert markdown-like patterns safely
+    const escaped = escHtml(text);
+    // Convert **bold** (post-escape so < > are already entities)
+    const bold = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Split into paragraphs by double newline
+    const paras = bold.split(/\n\n+/);
+    if (paras.length === 1) {
+      // Single paragraph — just convert \n to <br>
+      return '<p>' + bold.replace(/\n/g, '<br>') + '</p>';
+    }
+    return paras.map(p => '<p>' + p.replace(/\n/g, '<br>') + '</p>').join('');
+  }
+
+
+  // ── Quality indicator HTML ────────────────────────────────────
+  function buildQualityHtml(data) {
+    const items = [];
+
+    const level = (data.confidence_level || '').toLowerCase();
+    if (level === 'high' || level === 'medium' || level === 'low') {
+      const cls = 'ai-quality-' + level;
+      items.push(`
+        <span class="ai-quality-item">
+          <span class="ai-quality-label">Confidence</span>
+          <span class="ai-quality-value ${cls}" title="Confidence level: ${level}">${level.toUpperCase()}</span>
+        </span>`);
+    }
+
+    const grounding = (data.grounding_status || '').toLowerCase();
+    if (grounding) {
+      let cls = '', label = '';
+      if (grounding === 'supported')          { cls = 'ai-quality-supported'; label = 'Supported'; }
+      else if (grounding.includes('partial')) { cls = 'ai-quality-partial';   label = 'Partial';   }
+      else if (grounding === 'unsupported')   { cls = 'ai-quality-unsupported'; label = 'Unverified'; }
+      if (cls) {
+        items.push(`
+          <span class="ai-quality-item">
+            <span class="ai-quality-label">Grounding</span>
+            <span class="ai-quality-value ${cls}" title="Grounding status: ${grounding}">${label}</span>
+          </span>`);
+      }
+    }
+
+    if (!items.length) return '';
+    return `<div class="ai-quality" role="note" aria-label="Answer quality indicators">${items.join('')}</div>`;
+  }
+
+
+  // ── Citations HTML ────────────────────────────────────────────
+  function buildCitationsHtml(citations) {
+    if (!citations || citations.length === 0) return '';
+
+    const items = citations.map((c, i) => {
+      const num   = i + 1;
+      const title = c.title || 'Academic Resource';
+      const docId = c.study_material_id || c.document_id;
+      const href  = docId ? `/student/resources/${encodeURIComponent(docId)}` : null;
+      const excerpt = c.excerpt ? `<div class="cx-ai-cit-snippet">"${escHtml(c.excerpt)}"</div>` : '';
+
+      return `
+        <div class="cx-ai-cit-card" role="listitem">
+          <div class="cx-ai-cit-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="cx-ai-cit-index">${num}</span>
+              <span class="cx-ai-cit-title">${escHtml(title)}</span>
+            </div>
+            ${href ? `<a href="${escHtml(href)}" class="cx-ai-cit-link" target="_self">Open Resource &rarr;</a>` : ''}
+          </div>
+          ${excerpt}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="cx-ai-citations-panel">
+        <div class="cx-ai-citations-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest, #24483A)" stroke-width="2" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Verified Referenced Sources (${citations.length})</span>
+        </div>
+        <div class="cx-ai-citations-grid" role="list">${items}</div>
+      </div>`;
+  }
+
+
+  // ── Scroll helper ─────────────────────────────────────────────
+  function scrollToBottom(mode) {
+    const conv = document.getElementById(mode + '-conversation');
+    if (conv) conv.scrollTop = conv.scrollHeight;
+  }
+
+
+  // ── Composer helpers ──────────────────────────────────────────
+  function wireComposer(inputId, sendId, charCountId, sendFn) {
+    const input   = document.getElementById(inputId);
+    const sendBtn = document.getElementById(sendId);
+    const charEl  = document.getElementById(charCountId);
+
+    if (!input || !sendBtn) return;
+
+    function updateSend() {
+      const len = input.value.length;
+      const empty = !input.value.trim();
+      sendBtn.disabled = empty;
+      if (charEl) {
+        if (len > 0) {
+          charEl.textContent = len + ' / ' + MAX_Q;
+          charEl.classList.toggle('near-limit', len > MAX_Q * 0.9);
+          charEl.classList.toggle('at-limit', len >= MAX_Q);
+        } else {
+          charEl.textContent = '';
+        }
+      }
+      // Auto-resize
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    }
+
+    input.addEventListener('input', updateSend);
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!sendBtn.disabled) sendFn();
+      }
+    });
+
+    sendBtn.addEventListener('click', sendFn);
+
+    return { input, sendBtn };
+  }
+
+  function setComposerBusy(inputId, sendId, busy) {
+    const input  = document.getElementById(inputId);
+    const sendBtn = document.getElementById(sendId);
+    if (input)   input.disabled  = busy;
+    if (sendBtn) sendBtn.disabled = busy;
+  }
+
+
+  // ── GENERAL Q&A ──────────────────────────────────────────────
+  wireComposer('general-input', 'general-send', 'general-char-count', sendGeneral);
+
+  async function sendGeneral() {
+    if (generalBusy) return;
+    const input = document.getElementById('general-input');
+    if (!input) return;
+    const query = input.value.trim();
+    if (!query) return;
+
+    generalBusy = true;
+    setComposerBusy('general-input', 'general-send', true);
+
+    const turn    = appendUserMessage('general', query);
+    const thinkEl = appendThinking('general');
+
+    input.value = '';
+    document.getElementById('general-char-count').textContent = '';
+    input.style.height = 'auto';
+    scrollToBottom('general');
+
+    const retryFn = () => {
+      input.value = query;
+      document.getElementById('general-send').dispatchEvent(new Event('click'));
+    };
+
+    try {
+      const data = await CampusX.ai.ask(query);
+      removeThinking(thinkEl);
+      appendAIMessage('general', turn, data, query);
+    } catch (err) {
+      removeThinking(thinkEl);
+      const msg = CampusX.ai.friendlyError(err);
+      appendInlineError('general', turn, msg, retryFn);
+      if (err.type === 'UNAUTHORIZED') {
+        setTimeout(() => window.location.replace('/login?session=expired'), 1500);
+      }
+    } finally {
+      generalBusy = false;
+      setComposerBusy('general-input', 'general-send', false);
+      // re-evaluate send button state
+      const curr = document.getElementById('general-input').value.trim();
+      document.getElementById('general-send').disabled = !curr;
+    }
+  }
+
+
+  // ── PDF CHAT ─────────────────────────────────────────────────
+  wireComposer('pdf-input', 'pdf-send', 'pdf-char-count', sendPdfChat);
+
+  async function sendPdfChat() {
+    if (pdfBusy || !pdfSessionId) return;
+    const input = document.getElementById('pdf-input');
+    if (!input) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    pdfBusy = true;
+    setComposerBusy('pdf-input', 'pdf-send', true);
+
+    const turn    = appendUserMessage('pdf', msg);
+    const thinkEl = appendThinking('pdf');
+
+    input.value = '';
+    document.getElementById('pdf-char-count').textContent = '';
+    input.style.height = 'auto';
+    scrollToBottom('pdf');
+
+    const retryFn = () => {
+      input.value = msg;
+      document.getElementById('pdf-send').dispatchEvent(new Event('click'));
+    };
+
+    try {
+      const data = await CampusX.ai.pdfChat(pdfSessionId, msg);
+      removeThinking(thinkEl);
+      appendAIMessage('pdf', turn, data, msg);
+    } catch (err) {
+      removeThinking(thinkEl);
+      const errMsg = CampusX.ai.friendlyError(err);
+      appendInlineError('pdf', turn, errMsg, retryFn);
+      if (err.type === 'UNAUTHORIZED') {
+        setTimeout(() => window.location.replace('/login?session=expired'), 1500);
+      }
+    } finally {
+      pdfBusy = false;
+      setComposerBusy('pdf-input', 'pdf-send', false);
+      const curr = document.getElementById('pdf-input').value.trim();
+      document.getElementById('pdf-send').disabled = !curr;
+    }
+  }
+
+
+  // ── MULTI-PDF CHAT ────────────────────────────────────────────
+  wireComposer('multi-input', 'multi-send', 'multi-char-count', sendMultiChat);
+
+  async function sendMultiChat() {
+    if (multibusy || !multiSessionId) return;
+    const input = document.getElementById('multi-input');
+    if (!input) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    multibusy = true;
+    setComposerBusy('multi-input', 'multi-send', true);
+
+    const turn    = appendUserMessage('multi', msg);
+    const thinkEl = appendThinking('multi');
+
+    input.value = '';
+    document.getElementById('multi-char-count').textContent = '';
+    input.style.height = 'auto';
+    scrollToBottom('multi');
+
+    const retryFn = () => {
+      input.value = msg;
+      document.getElementById('multi-send').dispatchEvent(new Event('click'));
+    };
+
+    try {
+      const data = await CampusX.ai.pdfChat(multiSessionId, msg);
+      removeThinking(thinkEl);
+      appendAIMessage('multi', turn, data, msg);
+    } catch (err) {
+      removeThinking(thinkEl);
+      const errMsg = CampusX.ai.friendlyError(err);
+      appendInlineError('multi', turn, errMsg, retryFn);
+      if (err.type === 'UNAUTHORIZED') {
+        setTimeout(() => window.location.replace('/login?session=expired'), 1500);
+      }
+    } finally {
+      multibusy = false;
+      setComposerBusy('multi-input', 'multi-send', false);
+      const curr = document.getElementById('multi-input').value.trim();
+      document.getElementById('multi-send').disabled = !curr;
+    }
+  }
+
+
+  // ── Starter prompt buttons ────────────────────────────────────
+  document.querySelectorAll('.ai-starter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prompt = btn.dataset.prompt || btn.textContent.trim().replace(/^"|"$/g, '');
+      const input  = document.getElementById('general-input');
+      if (input) {
+        input.value = prompt;
+        input.dispatchEvent(new Event('input'));
+        input.focus();
+      }
+    });
+  });
+
+
+  // ── Security helper: HTML escape ─────────────────────────────
+  function escHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function checkSvg() {
+    return '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M2 6l3 3 5-5"/></svg>';
+  }
+
+  function typeLabel(type) {
+    const labels = { pdf: 'PDF', video: 'Video', audio: 'Audio', image: 'Image', link: 'Link', document: 'Document' };
+    return labels[(type || '').toLowerCase()] || type || 'Resource';
+  }
+
+
+  // ── Initial render ───────────────────────────────────────────
+  setMode('general');
+
+})();
+</script>
 {% endblock %}

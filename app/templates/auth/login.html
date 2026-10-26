@@ -1,19 +1,307 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <title>CampusX Auth</title>
-    <link href="/static/css/design-system.css" rel="stylesheet">
-    <link href="/static/css/components.css" rel="stylesheet">
-</head>
-<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    <div class="glass-panel" style="width: 400px; text-align: center;">
-        <h1>Login</h1>
-        <form>
-            <input type="text" placeholder="Username" class="mb-4 p-4" style="width: 100%; border-radius: 8px; border: 1px solid #ccc;"><br>
-            <input type="password" placeholder="Password" class="mb-4 p-4" style="width: 100%; border-radius: 8px; border: 1px solid #ccc;"><br>
-            <button class="btn-primary" style="width: 100%;">Submit</button>
-        </form>
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Log in - CampusX{% endblock %}
+{% block meta_description %}Log in to CampusX to access your academic resources and AI study tools.{% endblock %}
+
+{% block topbar_right %}
+<a href="/create-id" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  Create ID / Account
+</a>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-panel-header">
+  <h1 class="auth-panel-title">Welcome back</h1>
+  <p class="auth-panel-sub">Log in with your CampusX email or Institutional ID.</p>
+</div>
+
+<!-- Error banner -->
+<div class="alert alert-error" id="auth-error" role="alert" aria-live="assertive" style="{% if error %}display:flex;{% else %}display:none;{% endif %}margin-bottom:var(--cx-space-5);">
+  <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+  </svg>
+  <span id="auth-error-msg">{{ error or '' }}</span>
+</div>
+
+{% if request.args.get('next') and '/admin' in request.args.get('next') %}
+<!-- Admin Security Notice Banner -->
+<div class="alert alert-warning" role="alert" style="display:flex;margin-bottom:var(--cx-space-5);background:#FFFBEB;border:1px solid #FDE68A;border-left:4px solid #D97706;padding:12px 16px;border-radius:6px;gap:12px;align-items:center;">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" style="flex-shrink:0;">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+  <div style="font-size:13px;color:#92400E;line-height:1.45;">
+    <strong>Administrator Access Protected:</strong> Please log in with your administrator password to access the administrative portal.
+  </div>
+</div>
+{% endif %}
+
+<form class="auth-form" id="login-form" method="POST" action="/login{% if request.args.get('next') %}?next={{ request.args.get('next') | urlencode }}{% endif %}" novalidate>
+  {% if request.args.get('next') %}
+  <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+  {% endif %}
+
+  <div class="form-group">
+    <label class="form-label" for="email">Email address or Institutional ID</label>
+    <input
+      class="input"
+      id="email"
+      name="email"
+      type="text"
+      autocomplete="username"
+      placeholder="e.g. admin@campusx.edu or STU-CSE-2026-001"
+      value="{{ email_val or '' }}"
+      required
+      aria-required="true"
+      aria-describedby="email-error"
+    >
+    <span class="form-hint" style="font-size:11.5px;color:var(--cx-text-muted);margin-top:3px;display:block;">
+      Enter your email address, institutional ID (e.g. <code>STU-CSE-2026-001</code>), or username.
+    </span>
+    <span class="form-error" id="email-error" role="alert" style="display:none;"></span>
+  </div>
+
+  <div class="form-group">
+    <div class="flex items-center justify-between mb-2">
+      <label class="form-label" for="password" style="margin:0;">Password</label>
+      <a href="/forgot-password" class="text-sm" style="color: var(--cx-text-link);">Forgot password?</a>
     </div>
-</body>
-</html>
+    <div class="input-wrap">
+      <input
+        class="input"
+        id="password"
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Enter your password"
+        required
+        aria-required="true"
+        aria-describedby="password-error"
+      >
+      <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Show password" aria-pressed="false">
+        <svg id="pw-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <svg id="pw-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" style="display:none;">
+          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      </button>
+    </div>
+    <span class="form-error" id="password-error" role="alert" style="display:none;"></span>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full" id="login-btn" style="justify-content:center;">
+    <span id="login-btn-text">Log in</span>
+    <svg id="login-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;animation:spin 0.8s linear infinite;" aria-hidden="true">
+      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-opacity="0.25"/>
+      <path d="M21 12a9 9 0 00-9-9" stroke-opacity="1"/>
+    </svg>
+  </button>
+
+  <a href="/create-id" class="btn btn-secondary w-full" style="justify-content:center;margin-top:10px;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Create New Student / Faculty ID
+  </a>
+
+</form>
+
+<!-- Demo Accounts Helper -->
+<div class="auth-demo-card">
+  <span class="auth-demo-label">One-Click Quick Logins:</span>
+  <div class="auth-demo-pills">
+    <button type="button" class="demo-fill-btn" data-email="admin@campusx.edu" data-pass="Password123!">Admin (admin@campusx.edu)</button>
+    <button type="button" class="demo-fill-btn" data-email="student@campusx.edu" data-pass="Password123!">Student (STU-CSE-2026-001)</button>
+    <button type="button" class="demo-fill-btn" data-email="faculty@campusx.edu" data-pass="Password123!">Faculty</button>
+    <button type="button" class="demo-fill-btn" data-email="yash.wankhde.cse@ghrua.edu.in" data-pass="Password123!">Yash</button>
+  </div>
+</div>
+
+<p class="mt-6" style="font-size: var(--cx-text-body-sm); text-align:center; color: var(--cx-text-muted);">
+  Need an institutional account?
+  <a href="/create-id" style="color: var(--cx-text-link); font-weight: var(--cx-weight-medium);">Create Institutional ID</a>
+</p>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form    = document.getElementById('login-form');
+  const emailEl = document.getElementById('email');
+  const passEl  = document.getElementById('password');
+  const btn     = document.getElementById('login-btn');
+  const btnText = document.getElementById('login-btn-text');
+  const spinner = document.getElementById('login-spinner');
+  const errBanner = document.getElementById('auth-error');
+  const errMsg    = document.getElementById('auth-error-msg');
+
+  // Password visibility toggle
+  const pwToggle   = document.getElementById('pw-toggle');
+  const pwIconShow = document.getElementById('pw-icon-show');
+  const pwIconHide = document.getElementById('pw-icon-hide');
+  if (pwToggle) {
+    pwToggle.addEventListener('click', () => {
+      const visible = passEl.type === 'text';
+      passEl.type = visible ? 'password' : 'text';
+      pwIconShow.style.display = visible ? '' : 'none';
+      pwIconHide.style.display = visible ? 'none' : '';
+      pwToggle.setAttribute('aria-pressed', String(!visible));
+      pwToggle.setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
+    });
+  }
+
+  // Clear stale session if indicated
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('session') === 'expired' || urlParams.get('logout')) {
+      if (window.CampusX && CampusX.auth) {
+        CampusX.auth.clearSession();
+      }
+    }
+  } catch (e) {}
+
+  // Inline validation helpers
+  function showFieldError(el, errEl, msg) {
+    el.classList.add('is-error');
+    errEl.textContent = msg;
+    errEl.style.display = '';
+    el.setAttribute('aria-invalid', 'true');
+  }
+  function clearFieldError(el, errEl) {
+    el.classList.remove('is-error');
+    errEl.style.display = 'none';
+    el.removeAttribute('aria-invalid');
+  }
+  function showBanner(msg) {
+    errMsg.textContent = msg;
+    errBanner.style.display = 'flex';
+    errBanner.classList.add('visible');
+  }
+  function hideBanner() {
+    errBanner.style.display = 'none';
+    errBanner.classList.remove('visible');
+  }
+
+  function validateIdentifier(val) {
+    if (!val) return 'Email or Institutional ID is required.';
+    if (val.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return 'Please enter a valid email address.';
+    } else {
+      if (val.length < 3) return 'Please enter a valid Institutional ID or username (at least 3 characters).';
+    }
+    return null;
+  }
+
+  // Real-time validation on blur
+  emailEl.addEventListener('blur', () => {
+    const err = validateIdentifier(emailEl.value.trim());
+    if (err) {
+      showFieldError(emailEl, document.getElementById('email-error'), err);
+    } else {
+      clearFieldError(emailEl, document.getElementById('email-error'));
+    }
+  });
+  emailEl.addEventListener('input', () => clearFieldError(emailEl, document.getElementById('email-error')));
+  passEl.addEventListener('input', () => clearFieldError(passEl, document.getElementById('password-error')));
+
+  function setLoading(on) {
+    btn.disabled = on;
+    btnText.textContent = on ? 'Logging in…' : 'Log in';
+    spinner.style.display = on ? '' : 'none';
+  }
+
+  // Core login executor
+  async function doLogin() {
+    hideBanner();
+
+    const email    = emailEl.value.trim();
+    const password = passEl.value;
+    let valid = true;
+
+    const idErr = validateIdentifier(email);
+    if (idErr) {
+      showFieldError(emailEl, document.getElementById('email-error'), idErr);
+      valid = false;
+    }
+    if (!password) {
+      showFieldError(passEl, document.getElementById('password-error'), 'Password is required.');
+      valid = false;
+    }
+    if (!valid) return;
+
+    setLoading(true);
+
+    try {
+      if (window.CampusX && CampusX.api && typeof CampusX.api.login === 'function') {
+        const res = await CampusX.api.login(email, password);
+        const data = res.data || res;
+        CampusX.auth.setSession(data.access_token, data.refresh_token, data.user);
+
+        btnText.textContent = 'Success! Redirecting…';
+        const next = new URLSearchParams(window.location.search).get('next');
+        const dest = (next && next.startsWith('/')) ? next : CampusX.dashboardForRole(data.user?.role);
+        window.location.replace(dest);
+        return;
+      }
+    } catch (err) {
+      if (err && (err.type === 'UNAUTHORIZED' || err.status === 401 || err.type === 'ACCOUNT_LOCKED')) {
+        setLoading(false);
+        const msg = (window.CampusX && CampusX.friendlyError) ? CampusX.friendlyError(err) : (err.message || 'Incorrect email or password.');
+        showBanner(msg);
+        return;
+      }
+      console.warn('API client login threw, falling back to native form submission:', err);
+    }
+
+    // Native POST submission fallback to /login
+    form.submit();
+  }
+  window.doLogin = doLogin;
+
+  // Form submit intercept
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    doLogin();
+  });
+
+  // Enter key support in input fields
+  [emailEl, passEl].forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doLogin();
+      }
+    });
+  });
+
+  // Quick fill pills
+  document.querySelectorAll('.demo-fill-btn').forEach(pill => {
+    pill.addEventListener('click', () => {
+      emailEl.value = pill.dataset.email;
+      passEl.value = pill.dataset.pass;
+      clearFieldError(emailEl, document.getElementById('email-error'));
+      clearFieldError(passEl, document.getElementById('password-error'));
+      hideBanner();
+      doLogin();
+    });
+  });
+
+  // Handle credentials in URL query parameters (auto-login if arrived with GET params)
+  const qParams = new URLSearchParams(window.location.search);
+  const qEmail = qParams.get('email');
+  const qPass = qParams.get('password');
+  if (qEmail && qPass) {
+    emailEl.value = qEmail;
+    passEl.value = qPass;
+    try { history.replaceState({}, '', '/login'); } catch (e) {}
+    doLogin();
+  }
+})();
+</script>
+{% endblock %}

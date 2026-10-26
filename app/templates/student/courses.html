@@ -1,0 +1,914 @@
+{% set active_page = "courses" %}
+{% extends "base.html" %}
+
+{% block title %}Department Resources — CampusX{% endblock %}
+{% block topbar_title %}Department Resources{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="/student/courses">My Courses</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Department Resources</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- Header -->
+  <div class="page-header" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:var(--cx-space-4);margin-bottom:var(--cx-space-6);width:100%;box-sizing:border-box;">
+    <div style="flex:1 1 300px;min-width:0;">
+      <h1 class="page-header-title">Department Resources</h1>
+      <p class="page-header-sub">Browse available lecture notes, study materials, and question papers by department.</p>
+    </div>
+
+    <!-- Search & View Toggle -->
+    <div style="display:flex;align-items:center;gap:var(--cx-space-3);flex-wrap:wrap;flex:1 1 360px;justify-content:flex-end;">
+      <div style="position:relative;flex:1 1 240px;max-width:440px;min-width:200px;width:100%;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--cx-text-muted);pointer-events:none;" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="input" id="branch-search" type="search" placeholder="Search title, subject, faculty, department..." style="padding-left:36px;height:40px;width:100%;background:#FFFFFF;border-radius:var(--cx-radius-md);box-sizing:border-box;" aria-label="Search title, subject, faculty, department">
+      </div>
+
+      <div class="btn-group" role="group" aria-label="View layout toggle" style="flex-shrink:0;">
+        <button type="button" class="btn btn-secondary btn-icon active" id="view-grid-btn" title="Grid view" aria-pressed="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </button>
+        <button type="button" class="btn btn-secondary btn-icon" id="view-list-btn" title="List view" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Summary Stat Tiles -->
+  <div class="stat-tiles" role="list" aria-label="Department Resources summary" style="margin-bottom:var(--cx-space-6);">
+    <div class="stat-tile" role="listitem">
+      <div class="stat-tile-label">Departments</div>
+      <div class="stat-tile-value" id="stat-total-depts">8</div>
+      <div class="stat-tile-sub">Active Academic Branches</div>
+    </div>
+    <div class="stat-tile" role="listitem">
+      <div class="stat-tile-label">Available Resources</div>
+      <div class="stat-tile-value" id="stat-total-resources" style="color:var(--cx-color-forest);">—</div>
+      <div class="stat-tile-sub">Live Approved Materials</div>
+    </div>
+    <div class="stat-tile" role="listitem">
+      <div class="stat-tile-label">Curriculum Subjects</div>
+      <div class="stat-tile-value" id="stat-total-subjects">27</div>
+      <div class="stat-tile-sub">Core Courses</div>
+    </div>
+    <div class="stat-tile" role="listitem">
+      <div class="stat-tile-label">Contribute</div>
+      <div style="margin-top:6px;">
+        <a href="/student/upload" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 12px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload Material</span>
+        </a>
+      </div>
+      <div class="stat-tile-sub" style="margin-top:6px;">Share notes with campus</div>
+    </div>
+  </div>
+
+  <div id="branches-section-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--cx-space-4);">
+    <p class="section-label" style="margin:0;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--cx-color-ink-muted, #64748B);">Academic Branches &amp; Live Resource Numbers</p>
+  </div>
+
+  <!-- Loading Skeletons -->
+  <div id="branches-loading" class="branches-grid">
+    {% for _ in range(8) %}
+    <div class="branch-card" style="pointer-events:none;">
+      <div class="skeleton" style="width:48px;height:48px;border-radius:50%;margin-bottom:var(--cx-space-3);"></div>
+      <div class="skeleton skeleton-title" style="width:60%;"></div>
+      <div class="skeleton skeleton-text short" style="width:40%;"></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Search Results Multi-Section Container (shown when search is active) -->
+  <div id="search-results-section" style="display:none;margin-bottom:var(--cx-space-6);">
+    <!-- Summary bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--cx-space-5);padding:var(--cx-space-3) var(--cx-space-4);background:#FFFFFF;border:1px solid var(--cx-border-subtle, #E4E0D8);border-radius:var(--cx-radius-md, 8px);">
+      <div style="font-size:14px;color:var(--cx-text-primary,#0F172A);font-weight:600;display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cx-color-forest,#24483A);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Search results for &ldquo;<span id="search-query-display" style="color:var(--cx-color-forest,#24483A);"></span>&rdquo;</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="clearSearch()" style="font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+        <span>Clear search</span> &times;
+      </button>
+    </div>
+
+    <!-- Section 1: Matching Resources (Title, Subject, Faculty) -->
+    <div id="search-resources-block" style="margin-bottom:var(--cx-space-6);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span class="badge" style="background:rgba(36,72,58,0.12);color:var(--cx-color-forest,#24483A);font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;">
+          Resources (<span id="search-resources-count">0</span>)
+        </span>
+        <span style="font-size:13px;color:var(--cx-text-muted,#64748B);">Matching resource titles, subjects &amp; faculty</span>
+      </div>
+      <div id="search-resources-list"></div>
+    </div>
+
+    <!-- Section 2: Matching Curriculum Subjects -->
+    <div id="search-courses-block" style="margin-bottom:var(--cx-space-6);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span class="badge" style="background:rgba(184,92,56,0.12);color:var(--cx-color-terracotta,#B85C38);font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;">
+          Curriculum Subjects (<span id="search-courses-count">0</span>)
+        </span>
+        <span style="font-size:13px;color:var(--cx-text-muted,#64748B);">Matching core courses</span>
+      </div>
+      <div id="search-courses-list" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:12px;"></div>
+    </div>
+
+    <!-- Section 3: Matching Academic Departments -->
+    <div id="search-branches-block">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span class="badge" style="background:#F1F5F9;color:#334155;font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;">
+          Departments (<span id="search-branches-count">0</span>)
+        </span>
+        <span style="font-size:13px;color:var(--cx-text-muted,#64748B);">Academic branches matching query</span>
+      </div>
+      <div id="search-branches-list" class="branches-grid"></div>
+    </div>
+  </div>
+
+  <!-- Standard Branches Grid -->
+  <div id="branches-container" class="branches-grid course-grid" role="list" aria-label="Academic branches" style="display:none;"></div>
+
+  <!-- Empty and Error States -->
+  <div id="courses-empty" class="courses-empty" style="display:none;">No courses yet</div>
+  <div id="courses-error" class="courses-error" style="display:none;">Could not load courses</div>
+
+  <!-- Empty Search Result -->
+  <div id="branches-empty" style="display:none;text-align:center;padding:var(--cx-space-12) 0;">
+    <div style="width:48px;height:48px;border-radius:50%;background:var(--cx-color-sand);display:flex;align-items:center;justify-content:center;margin:0 auto var(--cx-space-4);color:var(--cx-text-muted);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <h3 id="branches-empty-title" style="font-size:16px;font-weight:600;margin:0 0 6px;">No resources or branches match your search</h3>
+    <p id="branches-empty-desc" style="color:var(--cx-text-muted);font-size:14px;margin:0 0 16px;">Try adjusting your keywords (search by subject, title, teacher name, or branch).</p>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="clearSearch()">Clear search</button>
+  </div>
+
+  <!-- Bottom Request Banner -->
+  <div class="request-branch-banner" style="margin-top:var(--cx-space-8);background:#FFFFFF;border:1px solid var(--cx-border-subtle, #E4E0D8);border-radius:var(--cx-radius-lg, 12px);padding:var(--cx-space-5) var(--cx-space-6);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--cx-space-4);width:100%;box-sizing:border-box;">
+    <div style="display:flex;align-items:center;gap:var(--cx-space-4);">
+      <div style="width:42px;height:42px;border-radius:var(--cx-radius-md);background:rgba(36,72,58,0.08);color:var(--cx-color-forest);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+      </div>
+      <div>
+        <h4 style="margin:0 0 2px;font-size:15px;font-weight:600;color:var(--cx-text-primary);">Can't find your branch?</h4>
+        <p style="margin:0;font-size:13px;color:var(--cx-text-muted);">Your institution administrator can add or manage academic branches.</p>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="requestBranchModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+      </svg>
+      Request a Branch
+    </button>
+  </div>
+
+</div>
+
+<!-- Modal: Branch Details & Resources Viewer -->
+<div id="branch-modal" class="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:var(--cx-space-4);">
+  <div class="modal-dialog" style="background:#FFFFFF;border-radius:var(--cx-radius-lg, 12px);max-width:720px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 16px 40px rgba(0,0,0,0.18);overflow:hidden;">
+    
+    <!-- Modal Header -->
+    <div style="padding:var(--cx-space-5) var(--cx-space-6);border-bottom:1px solid var(--cx-border-subtle, #E4E0D8);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--cx-space-4);background:#FFFFFF;">
+      <div style="display:flex;align-items:center;gap:var(--cx-space-4);">
+        <div id="modal-icon-wrap" style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+            <h3 id="modal-title" style="margin:0;font-size:18px;font-weight:700;color:var(--cx-color-ink,#0F172A);"></h3>
+            <span id="modal-resource-badge" class="badge" style="background:rgba(36,72,58,0.1);color:var(--cx-color-forest,#24483A);font-weight:700;font-size:11.5px;padding:3px 8px;border-radius:6px;"></span>
+          </div>
+          <p id="modal-sub" style="margin:0;font-size:13px;color:var(--cx-text-muted,#64748B);"></p>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-icon" onclick="closeBranchModal()" aria-label="Close dialog" style="font-size:22px;line-height:1;color:var(--cx-text-muted);">&times;</button>
+    </div>
+
+    <!-- Modal Tabs Navigation -->
+    <div style="display:flex;border-bottom:1px solid var(--cx-border-subtle, #E4E0D8);background:#FAFAF8;padding:0 var(--cx-space-6);">
+      <button type="button" id="tab-btn-resources" class="modal-tab-btn active" onclick="switchModalTab('resources')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Department Resources (<span id="modal-tab-resources-count">0</span>)</span>
+      </button>
+      <button type="button" id="tab-btn-subjects" class="modal-tab-btn" onclick="switchModalTab('subjects')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Curriculum Subjects (<span id="modal-tab-subjects-count">0</span>)</span>
+      </button>
+    </div>
+
+    <!-- Tab 1: Department Resources List -->
+    <div id="modal-tab-content-resources" style="padding:var(--cx-space-5) var(--cx-space-6);overflow-y:auto;flex:1;background:#FFFFFF;"></div>
+
+    <!-- Tab 2: Curriculum Subjects List -->
+    <div id="modal-tab-content-subjects" style="display:none;padding:var(--cx-space-5) var(--cx-space-6);overflow-y:auto;flex:1;background:#FFFFFF;">
+      <div id="modal-courses-list"></div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="padding:var(--cx-space-4) var(--cx-space-6);background:var(--cx-color-sand, #F7F5F0);border-top:1px solid var(--cx-border-subtle, #E4E0D8);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <span id="modal-course-total" style="font-size:13px;color:var(--cx-text-muted,#64748B);"></span>
+      <div style="display:flex;gap:var(--cx-space-3);align-items:center;">
+        <a id="modal-upload-btn" href="/student/upload" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:5px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Upload Material</span>
+        </a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="closeBranchModal()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.branches-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 1024px) {
+  .branches-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .branches-grid { grid-template-columns: 1fr; }
+}
+
+.branches-grid.list-view {
+  grid-template-columns: 1fr !important;
+}
+
+.branch-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  width: 100%;
+  min-height: 84px;
+  box-sizing: border-box;
+}
+.branch-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border-color: #CBD5E1;
+}
+.branch-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.branch-card-content {
+  flex: 1;
+  min-width: 0;
+}
+.branch-card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 2px 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.branch-card-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748B;
+  margin: 0 0 2px 0;
+}
+.branch-card-desc {
+  font-size: 11.5px;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  line-height: 1.3;
+}
+.branch-card-arrow {
+  color: #94A3B8;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.modal-tab-btn {
+  padding: 12px 18px;
+  border: none;
+  background: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--cx-text-muted, #64748B);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.modal-tab-btn:hover {
+  color: var(--cx-text-primary, #0F172A);
+}
+.modal-tab-btn.active {
+  color: var(--cx-color-forest, #24483A);
+  font-weight: 700;
+  border-bottom-color: var(--cx-color-forest, #24483A);
+}
+
+.modal-resource-item {
+  background: #FFFFFF;
+  border: 1px solid var(--cx-border-subtle, #E4E0D8);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.modal-resource-item:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.03);
+}
+
+.modal-course-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--cx-space-3, 12px) var(--cx-space-4, 16px);
+  border: 1px solid var(--cx-border-subtle, #E2E8F0);
+  border-radius: var(--cx-radius-md, 8px);
+  margin-bottom: var(--cx-space-3, 12px);
+  background: #F8FAFC;
+  transition: background 0.12s ease;
+}
+.modal-course-row:hover {
+  background: #FFFFFF;
+  border-color: var(--cx-color-moss);
+}
+
+.branch-card:hover .branch-card-arrow {
+  color: #0F172A;
+  transform: translateX(3px);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (typeof CampusX !== 'undefined' && CampusX.auth && !CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/student/courses');
+    return;
+  }
+
+  const COURSES_API_ENDPOINT = '/api/v1/student/enrollments/courses';
+  let allBranches = [];
+  const container = document.getElementById('branches-container');
+  const loading = document.getElementById('branches-loading');
+  const empty = document.getElementById('branches-empty');
+  const searchInput = document.getElementById('branch-search');
+  const gridBtn = document.getElementById('view-grid-btn');
+  const listBtn = document.getElementById('view-list-btn');
+
+  // Modal elements
+  const modal = document.getElementById('branch-modal');
+  const modalIconWrap = document.getElementById('modal-icon-wrap');
+  const modalTitle = document.getElementById('modal-title');
+  const modalSub = document.getElementById('modal-sub');
+  const modalResourceBadge = document.getElementById('modal-resource-badge');
+  const modalTabResourcesCount = document.getElementById('modal-tab-resources-count');
+  const modalTabSubjectsCount = document.getElementById('modal-tab-subjects-count');
+  const modalTabContentResources = document.getElementById('modal-tab-content-resources');
+  const modalTabContentSubjects = document.getElementById('modal-tab-content-subjects');
+  const modalCoursesList = document.getElementById('modal-courses-list');
+  const modalCourseTotal = document.getElementById('modal-course-total');
+  const tabBtnResources = document.getElementById('tab-btn-resources');
+  const tabBtnSubjects = document.getElementById('tab-btn-subjects');
+
+  const ICON_SVGS = {
+    brain: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04z"/></svg>',
+    chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/></svg>',
+    laptop: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>',
+    shield: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    server: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M21 5v14c0 1.66-4 3-9 3s-9-1.34-9-3"/></svg>',
+    building: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="12"/><line x1="15" y1="22" x2="15" y2="12"/><line x1="8" y1="6" x2="8.01" y2="6"/><line x1="16" y1="6" x2="16.01" y2="6"/><line x1="8" y1="10" x2="8.01" y2="10"/><line x1="16" y1="10" x2="16.01" y2="10"/></svg>',
+    gear: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    zap: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    book: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+  };
+
+  const COLOR_PALETTES = [
+    { bg: 'rgba(36,72,58,0.08)', fg: 'var(--cx-color-forest, #24483A)' },
+    { bg: 'rgba(184,92,56,0.08)', fg: 'var(--cx-color-terracotta, #B85C38)' },
+    { bg: 'rgba(196,154,69,0.10)', fg: '#8a6512' },
+    { bg: 'rgba(97,116,90,0.10)', fg: 'var(--cx-color-moss, #61745A)' },
+    { bg: 'rgba(110,75,145,0.08)', fg: '#5E3B87' },
+    { bg: 'rgba(50,85,120,0.08)', fg: '#2C577D' }
+  ];
+
+  function getPalette(idx) {
+    return COLOR_PALETTES[idx % COLOR_PALETTES.length];
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  window.switchModalTab = function (tabName) {
+    if (tabName === 'resources') {
+      tabBtnResources.classList.add('active');
+      tabBtnSubjects.classList.remove('active');
+      modalTabContentResources.style.display = 'block';
+      modalTabContentSubjects.style.display = 'none';
+    } else {
+      tabBtnSubjects.classList.add('active');
+      tabBtnResources.classList.remove('active');
+      modalTabContentResources.style.display = 'none';
+      modalTabContentSubjects.style.display = 'block';
+    }
+  };
+
+  async function loadBranches() {
+    loading.style.display = 'grid';
+    container.style.display = 'none';
+    empty.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/v1/academic/branches', {
+        headers: {
+          'Authorization': 'Bearer ' + (CampusX.auth ? CampusX.auth.getAccessToken() : '')
+        }
+      });
+      if (res.status === 401) {
+        if (typeof CampusX !== 'undefined' && CampusX.auth) {
+          CampusX.auth.clearSession();
+        }
+        window.location.replace('/login?session=expired');
+        return;
+      }
+      const json = await res.json();
+      allBranches = Array.isArray(json.data) ? json.data : [];
+      loading.style.display = 'none';
+      container.style.display = 'grid';
+      renderBranches(allBranches);
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+      loading.style.display = 'none';
+      container.style.display = 'grid';
+    }
+  }
+
+  function renderBranches(branches) {
+    // Dynamic Stat Tiles
+    const totalResources = allBranches.reduce((sum, b) => sum + (b.resource_count || 0), 0);
+    const statResEl = document.getElementById('stat-total-resources');
+    if (statResEl) statResEl.textContent = totalResources;
+
+    const totalSubjects = allBranches.reduce((sum, b) => sum + ((b.courses && b.courses.length) || 0), 0);
+    const statSubjEl = document.getElementById('stat-total-subjects');
+    if (statSubjEl) statSubjEl.textContent = totalSubjects;
+
+    const statDeptsEl = document.getElementById('stat-total-depts');
+    if (statDeptsEl) statDeptsEl.textContent = allBranches.length;
+
+    if (!branches.length) {
+      container.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    container.innerHTML = branches.map((b, i) => {
+      const pal = getPalette(i);
+      const iconSvg = ICON_SVGS[b.icon] || ICON_SVGS.book;
+      const count = b.resource_count || 0;
+      const countBadge = count > 0
+        ? `<span class="badge" style="background:rgba(36,72,58,0.12);color:var(--cx-color-forest,#24483A);font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>${count} ${count === 1 ? 'resource' : 'resources'}</span>`
+        : `<span class="badge" style="background:#F1F5F9;color:#64748B;font-weight:600;font-size:12px;padding:3px 9px;border-radius:6px;">0 resources</span>`;
+      const bg = b.bg || pal.bg;
+      const fg = b.fg || pal.fg;
+
+      return `
+        <div class="branch-card" onclick="openBranchModal('${esc(b.id)}')" role="listitem" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openBranchModal('${esc(b.id)}')" title="${esc(b.name)}">
+          <div class="branch-card-icon" style="background:${bg};color:${fg};">
+            ${iconSvg}
+          </div>
+          <div class="branch-card-content">
+            <h3 class="branch-card-title">${esc(b.code)}</h3>
+            <div class="branch-card-count" style="margin:4px 0 3px 0;">${countBadge}</div>
+            <p class="branch-card-desc" title="${esc(b.name)}">${esc(b.name)}</p>
+          </div>
+          <div class="branch-card-arrow" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const searchResultsSection = document.getElementById('search-results-section');
+  const searchQueryDisplay = document.getElementById('search-query-display');
+  const searchResourcesBlock = document.getElementById('search-resources-block');
+  const searchResourcesCount = document.getElementById('search-resources-count');
+  const searchResourcesList = document.getElementById('search-resources-list');
+  const searchCoursesBlock = document.getElementById('search-courses-block');
+  const searchCoursesCount = document.getElementById('search-courses-count');
+  const searchCoursesList = document.getElementById('search-courses-list');
+  const searchBranchesBlock = document.getElementById('search-branches-block');
+  const searchBranchesCount = document.getElementById('search-branches-count');
+  const searchBranchesList = document.getElementById('search-branches-list');
+  const branchesSectionHeader = document.getElementById('branches-section-header');
+  const emptyTitle = document.getElementById('branches-empty-title');
+  const emptyDesc = document.getElementById('branches-empty-desc');
+
+  // Filter search across: Resource Titles, Subject Names, Faculty Names, Department Names & Codes
+  function handleSearch() {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) {
+      if (searchResultsSection) searchResultsSection.style.display = 'none';
+      if (branchesSectionHeader) branchesSectionHeader.style.display = 'flex';
+      container.style.display = 'grid';
+      empty.style.display = 'none';
+      renderBranches(allBranches);
+      return;
+    }
+
+    const matchingResources = [];
+    const matchingSubjects = [];
+    const matchingBranches = [];
+
+    allBranches.forEach(b => {
+      let branchMatched = false;
+      const bCode = (b.code || '').toLowerCase();
+      const bName = (b.name || '').toLowerCase();
+      const bMatchesDirectly = bCode.includes(q) || bName.includes(q);
+
+      // Check resources for matching title, subject, faculty
+      (b.resources || []).forEach(r => {
+        const title = (r.title || '').toLowerCase();
+        const subj = (r.subject_name || '').toLowerCase();
+        const fac = (r.faculty_name || '').toLowerCase();
+        const desc = (r.description || '').toLowerCase();
+
+        if (title.includes(q) || subj.includes(q) || fac.includes(q) || desc.includes(q) || bMatchesDirectly) {
+          branchMatched = true;
+          matchingResources.push({
+            ...r,
+            branch_code: b.code,
+            branch_name: b.name,
+            branch_id: b.id
+          });
+        }
+      });
+
+      // Check curriculum courses / subjects
+      (b.courses || []).forEach(c => {
+        const cName = (c.name || '').toLowerCase();
+        const cCode = (c.code || '').toLowerCase();
+
+        if (cName.includes(q) || cCode.includes(q)) {
+          branchMatched = true;
+          matchingSubjects.push({
+            ...c,
+            branch_code: b.code,
+            branch_name: b.name,
+            branch_id: b.id
+          });
+        }
+      });
+
+      if (branchMatched || bMatchesDirectly) {
+        matchingBranches.push(b);
+      }
+    });
+
+    if (!matchingResources.length && !matchingSubjects.length && !matchingBranches.length) {
+      if (searchResultsSection) searchResultsSection.style.display = 'none';
+      container.style.display = 'none';
+      if (branchesSectionHeader) branchesSectionHeader.style.display = 'none';
+      empty.style.display = 'block';
+      if (emptyTitle) emptyTitle.textContent = `No resources, subjects, or branches match "${esc(q)}"`;
+      if (emptyDesc) emptyDesc.textContent = 'Try adjusting your keywords (search by subject, title, teacher name, or branch).';
+      return;
+    }
+
+    empty.style.display = 'none';
+    container.style.display = 'none';
+    if (branchesSectionHeader) branchesSectionHeader.style.display = 'none';
+    if (searchResultsSection) searchResultsSection.style.display = 'block';
+    if (searchQueryDisplay) searchQueryDisplay.textContent = q;
+
+    // Render Matching Resources (Titles, Subjects, Faculty)
+    if (searchResourcesCount) searchResourcesCount.textContent = matchingResources.length;
+    if (matchingResources.length > 0) {
+      searchResourcesBlock.style.display = 'block';
+      searchResourcesList.innerHTML = matchingResources.map(r => `
+        <div class="modal-resource-item" style="margin-bottom:12px;background:#FFFFFF;border:1px solid #CBD5E1;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">
+              <span class="badge" style="background:rgba(36,72,58,0.12);color:var(--cx-color-forest,#24483A);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">
+                ${esc(r.branch_code)}
+              </span>
+              <span class="badge" style="background:#F1F5F9;color:#475569;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">
+                ${esc(r.material_type || 'DOCUMENT')}
+              </span>
+              ${r.subject_name ? `<span style="font-size:12px;font-weight:700;color:#0F172A;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;">Subject: ${esc(r.subject_name)}</span>` : ''}
+            </div>
+            <h4 style="margin:0 0 6px 0;font-size:15.5px;font-weight:700;color:#0F172A;line-height:1.35;">
+              ${esc(r.title)}
+            </h4>
+            <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:#64748B;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-weight:600;color:#334155;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>${esc(r.faculty_name || 'Faculty Instructor')}</span>
+              </span>
+              <span style="color:#CBD5E1;">&bull;</span>
+              <span>${esc(r.branch_name)}</span>
+              ${r.created_at ? `<span style="color:#CBD5E1;">&bull;</span><span>${esc(r.created_at)}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <a href="/api/v1/resources/${esc(r.id)}/view" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="font-size:12.5px;padding:6px 13px;display:inline-flex;align-items:center;gap:5px;background:#F8FAFC;border:1px solid #CBD5E1;color:#0F172A;font-weight:600;" title="Open and read online without downloading">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Open Online</span>
+            </a>
+            <a href="/api/v1/resources/${esc(r.id)}/file" download class="btn btn-secondary btn-sm" style="font-size:12.5px;padding:6px 10px;color:#475569;" title="Download file">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            <a href="/student/ai-chat?q=${encodeURIComponent('Explain or summarize: ' + r.title)}" class="btn btn-primary btn-sm" style="font-size:12.5px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px;" title="Ask CampusX AI">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>AI</span>
+            </a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      searchResourcesBlock.style.display = 'none';
+    }
+
+    // Render Matching Curriculum Subjects
+    if (searchCoursesCount) searchCoursesCount.textContent = matchingSubjects.length;
+    if (matchingSubjects.length > 0) {
+      searchCoursesBlock.style.display = 'block';
+      searchCoursesList.innerHTML = matchingSubjects.map(c => `
+        <div style="background:#FFFFFF;border:1px solid #E4E0D8;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+              <span class="badge" style="background:#F1F5F9;color:#334155;font-size:11px;font-weight:700;">${esc(c.code)}</span>
+              <span class="badge" style="background:rgba(36,72,58,0.08);color:var(--cx-color-forest,#24483A);font-size:10.5px;font-weight:600;">${esc(c.branch_code)}</span>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#0F172A;margin-bottom:2px;">${esc(c.name)}</div>
+            <div style="font-size:11.5px;color:#64748B;">${esc(c.branch_name)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openBranchModal('${esc(c.branch_id)}')" style="font-size:11.5px;padding:4px 9px;">
+              Explore
+            </button>
+            <a href="/student/ai-chat?q=${encodeURIComponent('Explain subject: ' + c.name + ' (' + c.code + ')')}" class="btn btn-primary btn-sm" style="font-size:11.5px;padding:4px 9px;">
+              Ask AI
+            </a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      searchCoursesBlock.style.display = 'none';
+    }
+
+    // Render Matching Departments
+    if (searchBranchesCount) searchBranchesCount.textContent = matchingBranches.length;
+    if (matchingBranches.length > 0) {
+      searchBranchesBlock.style.display = 'block';
+      searchBranchesList.innerHTML = matchingBranches.map((b, i) => {
+        const pal = getPalette(i);
+        const iconSvg = ICON_SVGS[b.icon] || ICON_SVGS.book;
+        const count = b.resource_count || 0;
+        const countBadge = count > 0
+          ? `<span class="badge" style="background:rgba(36,72,58,0.12);color:var(--cx-color-forest,#24483A);font-weight:700;font-size:12px;padding:3px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>${count} ${count === 1 ? 'resource' : 'resources'}</span>`
+          : `<span class="badge" style="background:#F1F5F9;color:#64748B;font-weight:600;font-size:12px;padding:3px 9px;border-radius:6px;">0 resources</span>`;
+        const bg = b.bg || pal.bg;
+        const fg = b.fg || pal.fg;
+
+        return `
+          <div class="branch-card" onclick="openBranchModal('${esc(b.id)}')" role="listitem" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openBranchModal('${esc(b.id)}')" title="${esc(b.name)}">
+            <div class="branch-card-icon" style="background:${bg};color:${fg};">
+              ${iconSvg}
+            </div>
+            <div class="branch-card-content">
+              <h3 class="branch-card-title">${esc(b.code)}</h3>
+              <div class="branch-card-count" style="margin:4px 0 3px 0;">${countBadge}</div>
+              <p class="branch-card-desc" title="${esc(b.name)}">${esc(b.name)}</p>
+            </div>
+            <div class="branch-card-arrow" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      searchBranchesBlock.style.display = 'none';
+    }
+  }
+
+  // Filter search listener
+  searchInput.addEventListener('input', handleSearch);
+
+  window.clearSearch = function () {
+    searchInput.value = '';
+    handleSearch();
+    searchInput.focus();
+  };
+
+  // View toggle
+  gridBtn.addEventListener('click', () => {
+    gridBtn.classList.add('active');
+    gridBtn.setAttribute('aria-pressed', 'true');
+    listBtn.classList.remove('active');
+    listBtn.setAttribute('aria-pressed', 'false');
+    container.classList.remove('list-view');
+    if (searchBranchesList) searchBranchesList.classList.remove('list-view');
+  });
+
+  listBtn.addEventListener('click', () => {
+    listBtn.classList.add('active');
+    listBtn.setAttribute('aria-pressed', 'true');
+    gridBtn.classList.remove('active');
+    gridBtn.setAttribute('aria-pressed', 'false');
+    container.classList.add('list-view');
+    if (searchBranchesList) searchBranchesList.classList.add('list-view');
+  });
+
+  // Modal handlers
+  window.openBranchModal = function (branchId) {
+    const branch = allBranches.find(b => b.id === branchId);
+    if (!branch) return;
+
+    const idx = allBranches.indexOf(branch);
+    const pal = getPalette(idx);
+
+    modalIconWrap.style.background = pal.bg;
+    modalIconWrap.style.color = pal.fg;
+    modalIconWrap.innerHTML = ICON_SVGS[branch.icon] || ICON_SVGS.book;
+
+    const resCount = branch.resource_count || 0;
+    const subjCount = branch.courses ? branch.courses.length : 0;
+
+    modalTitle.textContent = `${branch.code} — ${branch.name}`;
+    modalSub.textContent = `${resCount} approved resources available • ${subjCount} curriculum subjects`;
+    modalResourceBadge.textContent = `${resCount} Available Resources`;
+    modalTabResourcesCount.textContent = resCount;
+    modalTabSubjectsCount.textContent = subjCount;
+    modalCourseTotal.textContent = `${branch.name} • ${resCount} resources available`;
+
+    const uploadBtn = document.getElementById('modal-upload-btn');
+    if (uploadBtn) {
+      uploadBtn.href = `/student/upload?department=${encodeURIComponent(branch.code)}`;
+    }
+
+    // Populate Tab 1: Department Resources
+    if (branch.resources && branch.resources.length > 0) {
+      modalTabContentResources.innerHTML = branch.resources.map(r => `
+        <div class="modal-resource-item">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+              <span class="badge" style="background:rgba(36,72,58,0.08);color:var(--cx-color-forest,#24483A);font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">${esc(r.material_type || 'DOCUMENT')}</span>
+              ${r.subject_name ? `<span style="font-size:12px;font-weight:600;color:#64748B;">${esc(r.subject_name)}</span>` : ''}
+            </div>
+            <h4 style="margin:0 0 5px 0;font-size:14.5px;font-weight:700;color:#0F172A;line-height:1.3;">${esc(r.title)}</h4>
+            <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:#64748B;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>${esc(r.faculty_name || 'Faculty Member')}</span>
+              </span>
+              ${r.created_at ? `<span style="color:#CBD5E1;">&bull;</span><span>${esc(r.created_at)}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <a href="/api/v1/resources/${esc(r.id)}/view" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px;display:inline-flex;align-items:center;gap:5px;background:#F8FAFC;border:1px solid #CBD5E1;color:#0F172A;" title="Open and read online without downloading">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Open Online</span>
+            </a>
+            <a href="/api/v1/resources/${esc(r.id)}/file" download class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 10px;color:#475569;" title="Download file">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+            <a href="/student/ai-chat?q=${encodeURIComponent('Explain or summarize: ' + r.title)}" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 11px;display:inline-flex;align-items:center;gap:4px;" title="Ask CampusX AI">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>AI</span>
+            </a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      modalTabContentResources.innerHTML = `
+        <div style="text-align:center;padding:var(--cx-space-8) 0;">
+          <div style="width:48px;height:48px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;margin:0 auto var(--cx-space-3);color:#94A3B8;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h4 style="margin:0 0 4px 0;font-size:15px;font-weight:600;color:#0F172A;">No resources uploaded yet</h4>
+          <p style="margin:0 0 16px 0;font-size:13px;color:#64748B;">No materials currently uploaded under ${esc(branch.code)}. Be the first to share notes or question papers.</p>
+          <a href="/student/upload?department=${encodeURIComponent(branch.code)}" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload Material to ${esc(branch.code)}</span>
+          </a>
+        </div>
+      `;
+    }
+
+    // Populate Tab 2: Curriculum Subjects
+    if (!branch.courses || !branch.courses.length) {
+      modalCoursesList.innerHTML = `
+        <div style="text-align:center;padding:var(--cx-space-8) 0;color:var(--cx-text-muted);">
+          No subjects listed for this branch yet.
+        </div>`;
+    } else {
+      modalCoursesList.innerHTML = branch.courses.map(c => `
+        <div class="modal-course-row">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <span class="badge badge-default" style="font-size:11px;font-weight:600;letter-spacing:0.5px;">${esc(c.code)}</span>
+              <span style="font-weight:600;font-size:14px;color:var(--cx-text-primary);">${esc(c.name)}</span>
+            </div>
+            <div style="font-size:12px;color:var(--cx-text-muted);">
+              ${c.credits ? `${c.credits} Credits &bull; Core Curriculum` : 'Core Subject'}
+            </div>
+          </div>
+          <div style="display:flex;gap:var(--cx-space-2);">
+            <a href="/student/resources?q=${encodeURIComponent(c.code)}" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;">
+              Resources
+            </a>
+            <a href="/student/ai-chat?q=${encodeURIComponent('Tell me about ' + c.name + ' (' + c.code + ')')}" class="btn btn-primary btn-sm" style="font-size:12px;padding:4px 10px;">
+              Ask AI
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Switch to resources tab by default
+    switchModalTab('resources');
+    modal.style.display = 'flex';
+  };
+
+  window.closeBranchModal = function () {
+    modal.style.display = 'none';
+  };
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeBranchModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display === 'flex') {
+      closeBranchModal();
+    }
+  });
+
+  window.requestBranchModal = function () {
+    if (window.CampusX && CampusX.toast) {
+      CampusX.toast('Branch request submitted to your administrator!', 'success');
+    } else {
+      alert('Branch request submitted to your institution administrator.');
+    }
+  };
+
+  loadBranches();
+})();
+</script>
+{% endblock %}

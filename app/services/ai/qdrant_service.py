@@ -35,7 +35,7 @@ class QdrantService:
     def __init__(self):
         url = os.environ.get("QDRANT_URL", "http://localhost:6333")
         api_key = os.environ.get("QDRANT_API_KEY", None)
-        self.client = AsyncQdrantClient(url=url, api_key=api_key)
+        self.client = AsyncQdrantClient(url=url, api_key=api_key, timeout=0.5)
         self.collection_name = "campusx_documents"
 
     async def ensure_collection(self):

@@ -49,14 +49,14 @@ def get_me():
 def update_me():
     """Update the authenticated user's own profile.
 
-    Only full_name, display_name, avatar_url, timezone, locale are accepted.
+    Accepted fields: full_name, display_name, avatar_url, timezone, locale, phone, bio, location.
     All other fields silently ignored.
     """
     data = request.get_json(silent=True) or {}
+    allowed = ('full_name', 'display_name', 'avatar_url', 'timezone', 'locale', 'phone', 'bio', 'location')
     profile = _svc.update_user_profile(
         request.user.id,
-        **{k: v for k, v in data.items()
-           if k in ('full_name', 'display_name', 'avatar_url', 'timezone', 'locale')}
+        **{k: v for k, v in data.items() if k in allowed}
     )
     if not profile:
         return error_response(code="NOT_FOUND", message="User not found", status_code=404)

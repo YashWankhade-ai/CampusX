@@ -1,13 +1,422 @@
+{% set active_page = "dashboard" %}
 {% extends "base.html" %}
+
+{% block title %}Dashboard — CampusX{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
 {% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+{% include "student/_nav.html" %}
 {% endblock %}
-{% block content %}
-<div class="glass-panel">
-    <h1>Student: Dashboard</h1>
-    <p>Welcome to the student interface.</p>
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">U</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Student</div>
+    <div class="sidebar-user-role" id="sidebar-role">Student</div>
+  </div>
 </div>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="/student/notifications" class="btn btn-ghost btn-icon" aria-label="Notifications" id="topbar-notif-btn">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 01-3.46 0"/>
+  </svg>
+  <span id="topbar-notif-badge" class="nav-item-badge" style="position:absolute;top:-2px;right:-2px;display:none;" aria-label="unread notifications"></span>
+</a>
+<button class="btn btn-ghost btn-sm" id="user-menu-btn" style="position:relative;" aria-haspopup="true" aria-expanded="false">
+  <div class="avatar avatar-sm avatar-forest" id="topbar-avatar" aria-hidden="true">U</div>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- Page header (greeting) -->
+  <div class="page-header" id="greeting-header">
+    <h1 class="page-header-title" id="greeting-text">Good morning</h1>
+    <p class="page-header-sub" id="greeting-sub">Loading your dashboard…</p>
+  </div>
+
+  <!-- Loading skeletons (shown while fetching) -->
+  <div id="dashboard-loading">
+    <div class="stat-tiles">
+      {% for _ in range(4) %}
+      <div class="stat-tile">
+        <div class="skeleton skeleton-text short"></div>
+        <div class="skeleton" style="height:28px;width:40%;margin-bottom:var(--cx-space-2);"></div>
+        <div class="skeleton skeleton-text med"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="quick-actions-grid">
+      {% for _ in range(4) %}
+      <div class="card" style="padding:var(--cx-space-5);">
+        <div class="skeleton" style="width:36px;height:36px;border-radius:var(--cx-radius-sm);margin-bottom:var(--cx-space-3);"></div>
+        <div class="skeleton skeleton-text med"></div>
+        <div class="skeleton skeleton-text short"></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Main dashboard content (shown after fetch) -->
+  <div id="dashboard-content" style="display:none;">
+
+    <!-- Stat tiles -->
+    <div class="stat-tiles" role="list" aria-label="Dashboard summary">
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Programs</div>
+        <div class="stat-tile-value" id="stat-programs">—</div>
+        <div class="stat-tile-sub" id="stat-enroll-status"></div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Courses</div>
+        <div class="stat-tile-value" id="stat-courses">—</div>
+        <div class="stat-tile-sub">Enrolled</div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Contributions</div>
+        <div class="stat-tile-value" id="stat-contributions">—</div>
+        <div class="stat-tile-sub">Resources shared</div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Notifications</div>
+        <div class="stat-tile-value" id="stat-notifications">—</div>
+        <div class="stat-tile-sub">Unread</div>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div style="margin-bottom:var(--cx-space-8);">
+      <p class="section-label">Quick actions</p>
+      <div class="quick-actions-grid">
+        <a href="/student/resources" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(36,72,58,0.10);color:var(--cx-color-forest);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="quick-action-label">Browse Resources</div>
+          <div class="quick-action-desc">Find notes, papers and references</div>
+        </a>
+        <a href="/student/upload" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(184,92,56,0.10);color:var(--cx-color-terracotta);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="quick-action-label">Upload Material</div>
+          <div class="quick-action-desc">Share notes &amp; question papers</div>
+        </a>
+        <a href="/student/ai-chat" class="quick-action-card">
+          <div class="quick-action-icon" style="background:var(--cx-color-ochre-pale);color:#7a5a10;" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/></svg>
+          </div>
+          <div class="quick-action-label">Ask CampusX AI</div>
+          <div class="quick-action-desc">Chat with your course materials</div>
+        </a>
+        <a href="/student/study-tools" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(97,116,90,0.10);color:var(--cx-color-moss);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+          </div>
+          <div class="quick-action-label">Study Tools</div>
+          <div class="quick-action-desc">Quizzes, flashcards, summaries</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Two-column layout: courses + recent notifications -->
+    <div class="dashboard-grid">
+
+      <!-- Main: My Courses -->
+      <div class="dashboard-main">
+        <div class="section-header">
+          <h2 class="section-header-title">My Courses</h2>
+          <a href="/student/courses" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+
+        <!-- Courses: loading state -->
+        <div id="courses-loading" class="course-grid">
+          {% for _ in range(3) %}
+          <div class="course-card" style="pointer-events:none;">
+            <div class="course-card-top">
+              <div class="skeleton" style="width:40px;height:40px;border-radius:var(--cx-radius-sm);"></div>
+              <div class="skeleton skeleton-text short" style="margin-top:4px;"></div>
+            </div>
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text med"></div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div id="courses-content" style="display:none;">
+          <div class="course-grid" id="courses-grid"></div>
+          <div class="empty-state" id="courses-empty" style="display:none;">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <div class="empty-state-title">No courses yet</div>
+            <p class="empty-state-body">You aren't enrolled in any courses. Contact your institution administrator to get enrolled.</p>
+          </div>
+          <div id="courses-error" style="display:none;" class="alert alert-error" role="alert">
+            <span id="courses-error-msg"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side: Notifications -->
+      <div class="dashboard-side">
+        <div class="section-header">
+          <h2 class="section-header-title">Notifications</h2>
+          <a href="/student/notifications" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+
+        <div id="notif-loading" class="notif-list">
+          {% for _ in range(3) %}
+          <div class="notif-item">
+            <div class="notif-unread-dot" style="background:var(--cx-border-muted);"></div>
+            <div class="notif-body">
+              <div class="skeleton skeleton-text wide"></div>
+              <div class="skeleton skeleton-text short"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div id="notif-content" style="display:none;">
+          <div class="notif-list" id="notif-list" aria-label="Recent notifications"></div>
+          <div class="empty-state" id="notif-empty" style="display:none;padding:var(--cx-space-8) var(--cx-space-4);">
+            <div class="empty-state-title" style="font-size:var(--cx-text-body-sm);">No notifications</div>
+            <p class="empty-state-body">You're all caught up.</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.dashboard-grid -->
+
+  </div><!-- /#dashboard-content -->
+
+  <!-- Error state (full page) -->
+  <div id="dashboard-error" style="display:none;">
+    <div class="empty-state">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="empty-state-title">Could not load dashboard</div>
+      <p class="empty-state-body" id="dashboard-error-msg">An error occurred. Please try again.</p>
+      <button class="btn btn-primary" onclick="loadDashboard()">Retry</button>
+    </div>
+  </div>
+
+</div><!-- /.page-body-inner -->
+{% endblock %}
+
+{% block scripts %}
+{% if token %}
+<script>
+try {
+  localStorage.setItem('cx_access_token', '{{ token }}');
+  sessionStorage.setItem('cx_access_token', '{{ token }}');
+} catch (e) {}
+</script>
+{% endif %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/student/dashboard');
+    return;
+  }
+
+  // ── Greeting ────────────────────────────────────────────────────
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting-text').textContent = greeting;
+
+  // ── Sidebar user ────────────────────────────────────────────────
+  function populateSidebarUser(data) {
+    const name = data.full_name || data.display_name || 'Student';
+    const initials = name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    document.getElementById('sidebar-name').textContent = name;
+    document.getElementById('sidebar-avatar').textContent = initials;
+    document.getElementById('topbar-avatar').textContent = initials;
+  }
+
+  // ── Format relative time ─────────────────────────────────────────
+  function relativeTime(isoString) {
+    if (!isoString) return '';
+    const diff = (Date.now() - new Date(isoString).getTime()) / 1000;
+    if (diff < 60)  return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return Math.floor(diff/86400) + 'd ago';
+  }
+
+  // ── Resource type icon ──────────────────────────────────────────
+  function resourceTypeColor(type) {
+    const t = (type || '').toUpperCase();
+    if (t === 'NOTE' || t === 'NOTES') return { bg: 'rgba(36,72,58,0.10)', fg: 'var(--cx-color-forest)' };
+    if (t === 'QUESTION_PAPER' || t === 'EXAM') return { bg: 'rgba(184,92,56,0.10)', fg: 'var(--cx-color-terracotta)' };
+    if (t === 'REFERENCE' || t === 'BOOK') return { bg: 'rgba(196,154,69,0.12)', fg: '#7a5a10' };
+    return { bg: 'rgba(97,116,90,0.10)', fg: 'var(--cx-color-moss)' };
+  }
+
+  // ── Render courses ──────────────────────────────────────────────
+  function renderCourseCard(e) {
+    return `
+      <a href="/student/courses/${e.course_id || e.id}" class="course-card">
+        <div class="course-card-top">
+          <div class="course-card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          </div>
+          <span class="badge badge-success" style="font-size:11px;">${(e.status || 'enrolled').toLowerCase()}</span>
+        </div>
+        <div class="course-card-title">${escHtml(e.course_id ? 'Course ' + e.course_id.slice(0,8) : 'Enrolled Course')}</div>
+        <div class="course-card-meta">
+          ${e.semester_id ? `<div class="course-card-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Semester ${e.semester_id.slice(0,8)}</div>` : ''}
+          ${e.grade ? `<div class="course-card-meta-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Grade: ${escHtml(e.grade)}</div>` : ''}
+          ${e.created_at ? `<div class="course-card-meta-row">Enrolled ${relativeTime(e.created_at)}</div>` : ''}
+        </div>
+      </a>`;
+  }
+
+  // ── Render notification ─────────────────────────────────────────
+  function renderNotifItem(n) {
+    const unread = !n.is_read;
+    return `
+      <div class="notif-item ${unread ? 'is-unread' : 'is-read'}" data-id="${n.id || ''}" role="listitem">
+        <div class="notif-unread-dot" aria-label="${unread ? 'Unread' : ''}"></div>
+        <div class="notif-body">
+          <div class="notif-message">${escHtml(n.message || n.title || 'Notification')}</div>
+          <div class="notif-time">${relativeTime(n.created_at)}</div>
+        </div>
+        ${unread && n.id ? `<button class="btn btn-ghost btn-sm notif-action" onclick="markRead('${n.id}', this)" aria-label="Mark as read">Mark read</button>` : ''}
+      </div>`;
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Update notification badge ────────────────────────────────────
+  function updateBadge(count) {
+    const badge = document.getElementById('nav-notif-badge');
+    const tbBadge = document.getElementById('topbar-notif-badge');
+    if (count > 0) {
+      const label = count > 99 ? '99+' : String(count);
+      if (badge)   { badge.textContent = label; badge.style.display = ''; badge.setAttribute('aria-label', label + ' unread notifications'); }
+      if (tbBadge) { tbBadge.textContent = label; tbBadge.style.display = ''; }
+    } else {
+      if (badge)   badge.style.display = 'none';
+      if (tbBadge) tbBadge.style.display = 'none';
+    }
+  }
+
+  // ── Load dashboard aggregate ────────────────────────────────────
+  async function loadDashboard() {
+    document.getElementById('dashboard-loading').style.display = '';
+    document.getElementById('dashboard-content').style.display = 'none';
+    document.getElementById('dashboard-error').style.display = 'none';
+
+    try {
+      const [dashRes, coursesRes, notifRes] = await Promise.all([
+        fetch('/api/v1/student/dashboard', { headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() } }),
+        fetch('/api/v1/student/enrollments/courses', { headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() } }),
+        fetch('/api/v1/notifications/?limit=5', { headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() } }),
+      ]);
+
+      if (dashRes.status === 401 || coursesRes.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      const dash = await dashRes.json();
+      const courses = await coursesRes.json();
+      const notifs = await notifRes.json();
+
+      const d = dash.data || dash;
+      const cs = (courses.data || courses || []);
+      const ns = Array.isArray(notifs.data) ? notifs.data : (notifs.data?.items || []);
+
+      // Populate sidebar user
+      populateSidebarUser(d);
+
+      // Greeting sub
+      document.getElementById('greeting-sub').textContent =
+        d.institution_name ? `${d.institution_name}` : 'Welcome to CampusX';
+
+      // Stat tiles
+      document.getElementById('stat-programs').textContent = d.program_enrollment_count ?? 0;
+      document.getElementById('stat-courses').textContent = d.course_enrollment_count ?? 0;
+      document.getElementById('stat-contributions').textContent = d.contribution_count ?? 0;
+      document.getElementById('stat-notifications').textContent = d.unread_notification_count ?? 0;
+      if (d.active_enrollment_status) {
+        document.getElementById('stat-enroll-status').textContent = d.active_enrollment_status;
+      }
+
+      // Update nav badge
+      updateBadge(d.unread_notification_count || 0);
+
+      // Render courses
+      document.getElementById('courses-loading').style.display = 'none';
+      document.getElementById('courses-content').style.display = '';
+      const courseGrid = document.getElementById('courses-grid');
+      if (cs.length === 0) {
+        document.getElementById('courses-empty').style.display = '';
+      } else {
+        courseGrid.innerHTML = cs.slice(0, 6).map(renderCourseCard).join('');
+      }
+
+      // Render notifications
+      document.getElementById('notif-loading').style.display = 'none';
+      document.getElementById('notif-content').style.display = '';
+      const notifList = document.getElementById('notif-list');
+      if (ns.length === 0) {
+        document.getElementById('notif-empty').style.display = '';
+        notifList.style.display = 'none';
+      } else {
+        notifList.innerHTML = ns.map(renderNotifItem).join('');
+      }
+
+      // Show content
+      document.getElementById('dashboard-loading').style.display = 'none';
+      document.getElementById('dashboard-content').style.display = '';
+
+    } catch (err) {
+      document.getElementById('dashboard-loading').style.display = 'none';
+      document.getElementById('dashboard-error').style.display = '';
+      const msg = err && err.message ? err.message : 'Unable to load dashboard.';
+      document.getElementById('dashboard-error-msg').textContent = msg;
+    }
+  }
+
+  // ── Mark single notification read ──────────────────────────────
+  window.markRead = async function(id, btn) {
+    btn.disabled = true;
+    try {
+      await fetch('/api/v1/notifications/' + id + '/read', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() },
+      });
+      const item = btn.closest('.notif-item');
+      if (item) {
+        item.classList.remove('is-unread');
+        item.classList.add('is-read');
+        btn.remove();
+      }
+      // Decrement badge
+      const badge = document.getElementById('nav-notif-badge');
+      if (badge && badge.style.display !== 'none') {
+        const n = parseInt(badge.textContent) || 1;
+        updateBadge(Math.max(0, n - 1));
+      }
+      const statN = document.getElementById('stat-notifications');
+      if (statN) statN.textContent = Math.max(0, parseInt(statN.textContent) - 1);
+    } catch (e) {
+      btn.disabled = false;
+    }
+  };
+
+  window.loadDashboard = loadDashboard;
+  loadDashboard();
+})();
+</script>
 {% endblock %}

@@ -24,3 +24,11 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Databases & Uploads
+*.db
+*.sqlite
+*.sqlite3
+campusx_dev.db
+uploads/*
+!uploads/.gitkeep

@@ -131,11 +131,12 @@ def get_departments():
                 filter_iid = uuid.UUID(filter_iid_str)
                 depts = db.session.query(Department).filter(
                     Department.institution_id == filter_iid,
+                    Department.is_deleted == False,
                 ).all()
             except (ValueError, TypeError):
                 return success_response(data=[])
         else:
-            depts = db.session.query(Department).all()
+            depts = db.session.query(Department).filter(Department.is_deleted == False).all()
     elif actor_institution_id:
         try:
             iid = uuid.UUID(str(actor_institution_id))
@@ -143,6 +144,7 @@ def get_departments():
             return success_response(data=[])
         depts = db.session.query(Department).filter(
             Department.institution_id == iid,
+            Department.is_deleted == False,
         ).all()
     else:
         return success_response(data=[])
@@ -284,3 +286,115 @@ def create_subject():
         return error_response(code="DB_ERROR", message="Could not create subject", status_code=500)
 
     return success_response(data=_safe_subject_dict(subj), message="Subject created", status_code=201)
+
+
+# ── Branches Explorer ─────────────────────────────────────────────────────────
+
+@academic_bp.route('/branches', methods=['GET'])
+def get_branches():
+    """Return all academic branches with actual resource counts and materials."""
+    from app.models.academic import Program, Subject
+    from app.models.resource import StudyMaterial
+
+    programs = db.session.query(Program).all()
+    branches = []
+
+    branch_meta = {
+        "Artificial Intelligence and Machine Learning": {
+            "code": "AI & ML", "icon": "brain", "category": "Engineering",
+            "bg": "rgba(36,72,58,0.08)", "fg": "var(--cx-color-forest, #24483A)"
+        },
+        "Data Science and Analytics": {
+            "code": "Data Science", "icon": "chart", "category": "Engineering",
+            "bg": "rgba(184,92,56,0.08)", "fg": "var(--cx-color-terracotta, #B85C38)"
+        },
+        "Computer Science Engineering": {
+            "code": "CSE", "icon": "laptop", "category": "Engineering",
+            "bg": "rgba(196,154,69,0.12)", "fg": "#8A6512"
+        },
+        "Cyber Security and Information Assurance": {
+            "code": "Cyber Security", "icon": "shield", "category": "Engineering",
+            "bg": "rgba(97,116,90,0.10)", "fg": "var(--cx-color-moss, #61745A)"
+        },
+        "Information Technology": {
+            "code": "IT", "icon": "server", "category": "Engineering",
+            "bg": "rgba(110,75,145,0.08)", "fg": "#5E3B87"
+        },
+        "Civil Engineering": {
+            "code": "Civil", "icon": "building", "category": "Engineering",
+            "bg": "rgba(50,85,120,0.08)", "fg": "#2C577D"
+        },
+        "Mechanical Engineering": {
+            "code": "Mechanical", "icon": "gear", "category": "Engineering",
+            "bg": "rgba(184,92,56,0.08)", "fg": "var(--cx-color-terracotta, #B85C38)"
+        },
+        "Electrical and Electronics Engineering": {
+            "code": "Electrical", "icon": "zap", "category": "Engineering",
+            "bg": "rgba(196,154,69,0.12)", "fg": "#8A6512"
+        },
+    }
+
+    for p in programs:
+        if p.name not in branch_meta:
+            continue
+        meta = branch_meta[p.name]
+        subjects = db.session.query(Subject).filter(Subject.program_id == p.id).all()
+        subj_ids = [s.id for s in subjects]
+
+        query = db.session.query(StudyMaterial).filter(
+            StudyMaterial.is_deleted == False,
+            StudyMaterial.status == 'APPROVED'
+        )
+        if subj_ids:
+            query = query.filter(
+                (StudyMaterial.department_name.ilike(f"%{p.name}%")) |
+                (StudyMaterial.department_name.ilike(f"%{meta['code']}%")) |
+                (StudyMaterial.subject_id.in_(subj_ids))
+            )
+        else:
+            query = query.filter(
+                (StudyMaterial.department_name.ilike(f"%{p.name}%")) |
+                (StudyMaterial.department_name.ilike(f"%{meta['code']}%"))
+            )
+
+        dept_materials = query.order_by(StudyMaterial.created_at.desc()).all()
+
+        material_list = [
+            {
+                "id": str(m.id),
+                "title": m.title,
+                "description": m.description or "",
+                "material_type": m.material_type.value if hasattr(m.material_type, "value") else str(m.material_type),
+                "faculty_name": getattr(m, "faculty_name", None) or (m.author.full_name if m.author else "Faculty Instructor"),
+                "subject_name": m.subject.name if m.subject else "",
+                "department_name": p.name,
+                "branch_code": meta["code"],
+                "created_at": m.created_at.strftime("%b %d, %Y") if m.created_at else ""
+            } for m in dept_materials
+        ]
+
+        branches.append({
+            "id": str(p.id),
+            "code": meta["code"],
+            "name": p.name,
+            "category": meta["category"],
+            "icon": meta["icon"],
+            "bg": meta.get("bg", "#F1F5F9"),
+            "fg": meta.get("fg", "#334155"),
+            "resource_count": len(material_list),
+            "course_count": len(subjects),
+            "resources": material_list,
+            "courses": [
+                {
+                    "id": str(s.id),
+                    "code": s.code,
+                    "name": s.name,
+                    "credits": s.credits
+                } for s in subjects
+            ]
+        })
+
+    branch_order = list(branch_meta.keys())
+    branches.sort(key=lambda b: branch_order.index(b["name"]) if b["name"] in branch_order else 999)
+
+    return success_response(data=branches)

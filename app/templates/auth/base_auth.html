@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{% block meta_description %}CampusX - Learn Smarter. Search Faster. Powered by AI.{% endblock %}">
+  <title>{% block title %}CampusX{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+<div class="auth-shell">
+
+  <!-- Auth topbar - Logo and nav -->
+  <div class="auth-topbar">
+    <a href="/" class="cx-wordmark cx-wordmark-dark" aria-label="CampusX home">
+      <span class="cx-wordmark-dot" style="background: var(--cx-color-terracotta);" aria-hidden="true"></span>
+      CampusX
+    </a>
+    {% block topbar_right %}
+    <a href="/" class="btn btn-ghost btn-sm">&larr; Back to home</a>
+    {% endblock %}
+  </div>
+
+  <!-- Auth body -->
+  <div class="auth-body">
+    <div class="auth-panel" role="main">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/api.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

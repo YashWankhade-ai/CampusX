@@ -1,13 +1,254 @@
+{% set active_page = "notifications" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}Notifications — CampusX{% endblock %}
+{% block topbar_title %}Notifications{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Notifications</li>
+</ol>
 {% endblock %}
+
 {% block content %}
-<div class="glass-panel">
-    <h1>Student: Notifications</h1>
-    <p>Welcome to the student interface.</p>
+<div class="page-body-inner">
+
+  <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--cx-space-4);">
+    <div>
+      <h1 class="page-header-title">Notifications</h1>
+      <p class="page-header-sub" id="notif-count-sub">Loading…</p>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="mark-all-btn" style="display:none;" aria-label="Mark all notifications as read">
+      Mark all as read
+    </button>
+  </div>
+
+  <!-- Filter tabs -->
+  <div style="display:flex;gap:var(--cx-space-1);margin-bottom:var(--cx-space-6);border-bottom:1px solid var(--cx-border-muted);">
+    <button class="btn btn-ghost btn-sm tab-btn active" id="tab-all" onclick="switchTab('all', this)"
+      style="border-radius:0;border-bottom:2px solid var(--cx-color-forest);color:var(--cx-color-forest);" aria-pressed="true">
+      All
+    </button>
+    <button class="btn btn-ghost btn-sm tab-btn" id="tab-unread" onclick="switchTab('unread', this)"
+      style="border-radius:0;" aria-pressed="false">
+      Unread <span id="unread-tab-count"></span>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="notif-list" id="notif-loading">
+    {% for _ in range(5) %}
+    <div class="notif-item">
+      <div class="notif-unread-dot" style="background:var(--cx-border-muted);"></div>
+      <div class="notif-body">
+        <div class="skeleton skeleton-text wide"></div>
+        <div class="skeleton skeleton-text short" style="margin-top:var(--cx-space-2);"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Content -->
+  <div id="notif-content" style="display:none;">
+    <div class="notif-list" id="notif-list" role="list" aria-label="Notifications" aria-live="polite"></div>
+
+    <div class="empty-state" id="notif-empty" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+      </svg>
+      <div class="empty-state-title" id="notif-empty-title">No notifications</div>
+      <p class="empty-state-body" id="notif-empty-body">You're all caught up.</p>
+    </div>
+
+    <div class="empty-state" id="notif-error" style="display:none;">
+      <div class="empty-state-title">Could not load notifications</div>
+      <p class="empty-state-body" id="notif-error-msg"></p>
+      <button class="btn btn-primary" onclick="loadNotifications(currentFilter)">Retry</button>
+    </div>
+
+    <!-- Pagination -->
+    <div id="notif-pagination" style="display:none;margin-top:var(--cx-space-6);display:flex;gap:var(--cx-space-2);justify-content:center;align-items:center;">
+      <button class="btn btn-secondary btn-sm" id="notif-prev" onclick="loadPage(notifPage-1)" disabled>← Previous</button>
+      <span id="notif-page-info" style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);"></span>
+      <button class="btn btn-secondary btn-sm" id="notif-next" onclick="loadPage(notifPage+1)" disabled>Next →</button>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (!CampusX.auth.isAuthenticated()) { window.location.replace('/login?next=/student/notifications'); return; }
+
+  let currentFilter = 'all';
+  let notifPage = 1;
+  const PAGE_LIMIT = 20;
+
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    const d = (Date.now() - new Date(iso).getTime())/1000;
+    if (d<60) return 'just now';
+    if (d<3600) return Math.floor(d/60)+'m ago';
+    if (d<86400) return Math.floor(d/3600)+'h ago';
+    if (d<2592000) return Math.floor(d/86400)+'d ago';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function renderItem(n) {
+    const unread = !n.is_read;
+    return `
+      <div class="notif-item ${unread ? 'is-unread' : 'is-read'}" id="notif-${n.id}" role="listitem">
+        <div class="notif-unread-dot" aria-hidden="${!unread}"></div>
+        <div class="notif-body">
+          <div class="notif-message">${escHtml(n.message || n.title || 'Notification')}</div>
+          ${n.notification_type ? `<span class="badge badge-default" style="font-size:10px;margin-bottom:4px;">${escHtml(n.notification_type)}</span>` : ''}
+          <div class="notif-time">${relativeTime(n.created_at)}</div>
+        </div>
+        <div class="notif-action">
+          ${unread && n.id ? `<button class="btn btn-ghost btn-sm" onclick="markRead('${n.id}', this)" aria-label="Mark as read">Mark read</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  async function loadNotifications(filter, page) {
+    currentFilter = filter || 'all';
+    notifPage = page || 1;
+    const endpoint = currentFilter === 'unread' ? '/api/v1/notifications/unread' : '/api/v1/notifications/';
+    const params = new URLSearchParams({ page: notifPage, limit: PAGE_LIMIT });
+
+    document.getElementById('notif-loading').style.display = '';
+    document.getElementById('notif-content').style.display = 'none';
+
+    try {
+      // Fetch both the list and unread count
+      const [listRes, countRes] = await Promise.all([
+        fetch(endpoint + '?' + params, { headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() } }),
+        fetch('/api/v1/notifications/count', { headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() } }),
+      ]);
+      if (listRes.status === 401) { CampusX.auth.clearSession(); window.location.replace('/login?session=expired'); return; }
+
+      const json = await listRes.json();
+      const countJson = await countRes.json();
+      const items = Array.isArray(json.data) ? json.data : [];
+      const meta = json.meta || {};
+      const total = meta.total || items.length;
+      const unreadCount = countJson.data?.unread_count ?? 0;
+
+      // Update UI state
+      document.getElementById('notif-loading').style.display = 'none';
+      document.getElementById('notif-content').style.display = '';
+
+      const countSub = document.getElementById('notif-count-sub');
+      countSub.textContent = unreadCount > 0 ? unreadCount + ' unread notification' + (unreadCount === 1 ? '' : 's') : 'No unread notifications';
+
+      const unreadTabCount = document.getElementById('unread-tab-count');
+      unreadTabCount.textContent = unreadCount > 0 ? '(' + unreadCount + ')' : '';
+
+      // Mark all button visibility
+      const markAllBtn = document.getElementById('mark-all-btn');
+      markAllBtn.style.display = unreadCount > 0 ? '' : 'none';
+
+      // Render
+      const list = document.getElementById('notif-list');
+      if (items.length === 0) {
+        list.innerHTML = '';
+        document.getElementById('notif-empty').style.display = '';
+        if (currentFilter === 'unread') {
+          document.getElementById('notif-empty-title').textContent = 'No unread notifications';
+          document.getElementById('notif-empty-body').textContent = "You've read everything.";
+        } else {
+          document.getElementById('notif-empty-title').textContent = 'No notifications';
+          document.getElementById('notif-empty-body').textContent = "You're all caught up.";
+        }
+        document.getElementById('notif-pagination').style.display = 'none';
+      } else {
+        document.getElementById('notif-empty').style.display = 'none';
+        list.innerHTML = items.map(renderItem).join('');
+
+        // Pagination
+        const totalPages = Math.ceil(total / PAGE_LIMIT);
+        if (totalPages > 1) {
+          document.getElementById('notif-pagination').style.display = 'flex';
+          document.getElementById('notif-page-info').textContent = 'Page ' + notifPage + ' of ' + totalPages;
+          document.getElementById('notif-prev').disabled = notifPage <= 1;
+          document.getElementById('notif-next').disabled = notifPage >= totalPages;
+        } else {
+          document.getElementById('notif-pagination').style.display = 'none';
+        }
+      }
+    } catch (err) {
+      document.getElementById('notif-loading').style.display = 'none';
+      document.getElementById('notif-content').style.display = '';
+      document.getElementById('notif-error').style.display = '';
+      document.getElementById('notif-error-msg').textContent = err.message || 'Network error.';
+    }
+  }
+
+  window.markRead = async function(id, btn) {
+    btn.disabled = true;
+    try {
+      await fetch('/api/v1/notifications/' + id + '/read', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() },
+      });
+      const item = document.getElementById('notif-' + id);
+      if (item) {
+        item.classList.remove('is-unread');
+        item.classList.add('is-read');
+        btn.closest('.notif-action').innerHTML = '';
+      }
+      CampusX.toast('Marked as read', 'success');
+      // Reload to update count
+      loadNotifications(currentFilter, notifPage);
+    } catch (e) {
+      btn.disabled = false;
+      CampusX.toast('Could not mark as read.', 'error');
+    }
+  };
+
+  document.getElementById('mark-all-btn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.textContent = 'Marking…';
+    try {
+      const res = await fetch('/api/v1/notifications/read-all', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() },
+      });
+      const json = await res.json();
+      const count = json.data?.marked_read ?? 0;
+      CampusX.toast(count + ' notification' + (count === 1 ? '' : 's') + ' marked as read.', 'success');
+      loadNotifications(currentFilter, notifPage);
+    } catch (e) {
+      CampusX.toast('Could not mark all as read.', 'error');
+    } finally {
+      this.disabled = false;
+      this.textContent = 'Mark all as read';
+    }
+  });
+
+  window.switchTab = function(filter, el) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.style.borderBottom = 'none';
+      b.style.color = '';
+      b.setAttribute('aria-pressed', 'false');
+    });
+    el.style.borderBottom = '2px solid var(--cx-color-forest)';
+    el.style.color = 'var(--cx-color-forest)';
+    el.setAttribute('aria-pressed', 'true');
+    loadNotifications(filter, 1);
+  };
+
+  window.loadNotifications = loadNotifications;
+  window.loadPage = (p) => loadNotifications(currentFilter, p);
+  loadNotifications('all', 1);
+})();
+</script>
 {% endblock %}

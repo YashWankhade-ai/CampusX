@@ -185,6 +185,9 @@ def ask():
             "session_id": result.get("session_id"),
             "citations": result.get("citations", []),
             "confidence": result.get("confidence", "LOW"),
+            "confidence_score": result.get("confidence_score", 0.0),
+            "confidence_level": result.get("confidence_level", "low"),
+            "grounding_status": result.get("grounding_status"),
             "model_used": result.get("model_used", ""),
             "usage": result.get("usage", {}),
         })

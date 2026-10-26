@@ -7,6 +7,12 @@ Security contract:
       which structurally separates DATA from system instructions.
     - Exception messages (str(exc)) are NEVER logged or returned to the client.
       Only type(exc).__name__ is used to avoid leaking API keys or tracebacks.
+
+Quality layer (Cycle 5):
+    - CitationVerifier   — all citations verified against DB before saving.
+    - ConfidenceScorer   — multi-signal 0.0–1.0 score + level.
+    - GroundingVerifier  — SUPPORTED / PARTIALLY_SUPPORTED / UNSUPPORTED.
+    - PromptSafetyGuard  — injection-pattern detection + DATA-fence labeling.
 """
 import uuid
 import json
@@ -19,6 +25,10 @@ from app.models.resource import StudyMaterial
 from .clients import AIClients
 from .rag_service import RAGService
 from .prompt_templates import SYSTEM_TUTOR_PROMPT, RAG_CONTEXT_TEMPLATE
+from .citation_verifier import CitationVerifier
+from .confidence_scorer import ConfidenceScorer
+from .grounding_verifier import GroundingVerifier
+from .prompt_safety import PromptSafetyGuard
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +45,17 @@ class ChatService:
         self,
         ai_clients: Optional[AIClients] = None,
         rag_service: Optional[RAGService] = None,
+        citation_verifier: Optional[CitationVerifier] = None,
+        confidence_scorer: Optional[ConfidenceScorer] = None,
+        grounding_verifier: Optional[GroundingVerifier] = None,
+        prompt_safety_guard: Optional[PromptSafetyGuard] = None,
     ):
         self.clients = ai_clients if ai_clients is not None else AIClients()
         self.rag = rag_service if rag_service is not None else RAGService()
+        self.citation_verifier = citation_verifier if citation_verifier is not None else CitationVerifier()
+        self.confidence_scorer = confidence_scorer if confidence_scorer is not None else ConfidenceScorer()
+        self.grounding_verifier = grounding_verifier if grounding_verifier is not None else GroundingVerifier()
+        self.prompt_safety_guard = prompt_safety_guard if prompt_safety_guard is not None else PromptSafetyGuard()
 
     # ── Session management ─────────────────────────────────────────────────────
 
@@ -102,10 +120,11 @@ class ChatService:
             institution_id MUST come from the JWT-verified request (set by blueprint).
             It is NEVER read from client-supplied input here.
 
-        Prompt injection defense:
-            Retrieved document text is inserted via RAG_CONTEXT_TEMPLATE, which
-            wraps it in clearly labeled DATA fences. The system prompt explicitly
-            instructs the model to treat that section as data, not instructions.
+        Quality layer (Cycle 5):
+            - PromptSafetyGuard scans context for injection patterns before LLM call.
+            - CitationVerifier validates each citation against DB (5-point check).
+            - GroundingVerifier classifies answer support (SUPPORTED / PARTIAL / UNSUPPORTED).
+            - ConfidenceScorer computes multi-signal 0.0–1.0 score + level.
         """
         session_uuid = uuid.UUID(str(session_id))
         session = db.session.query(ChatSession).filter_by(id=session_uuid).first()
@@ -146,18 +165,23 @@ class ChatService:
             user_role=user_role,
         )
 
-        # ── 4. Build system prompt ─────────────────────────────────────────────
+        # ── 4. Prompt safety scan (Cycle 5) ───────────────────────────────────
+        #    Scans retrieved content for injection patterns and adds warning header.
+        #    Academic content is PRESERVED — we label it, never discard it.
+        safe_context, injection_detected = self.prompt_safety_guard.scan_and_label(context_text)
+
+        # ── 5. Build system prompt with DATA fence ─────────────────────────────
         #    Retrieved documents are injected via RAG_CONTEXT_TEMPLATE — a
         #    structurally separate DATA section — NOT concatenated into the
         #    system instruction text itself. This is the prompt-injection
-        #    defense-in-depth boundary.
+        #    defense-in-depth boundary. PromptSafetyGuard provides layer 2.
         system_prompt = SYSTEM_TUTOR_PROMPT
-        if context_text:
-            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=context_text)
+        if safe_context:
+            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=safe_context)
 
         history_pruned.append({"role": "user", "content": user_message_text})
 
-        # ── 5. Call LLM (Claude primary, OpenAI fallback, mock final fallback) ─
+        # ── 6. Call LLM (Claude primary, OpenAI fallback, mock final fallback) ─
         ai_response = await self.clients.call_claude(
             messages=history_pruned,
             system_prompt=system_prompt,
@@ -169,7 +193,17 @@ class ChatService:
         usage_data = ai_response.get("usage", {})
         model_used = ai_response.get("model", "claude-3-5-sonnet-20241022")
 
-        # ── 6. Save AI response message ────────────────────────────────────────
+        # ── 7. Grounding verification (Cycle 5) ───────────────────────────────
+        try:
+            grounding_status = self.grounding_verifier.verify(
+                answer=ai_content,
+                context=context_text,
+                grounding_available=bool(context_text),
+            )
+        except Exception:
+            grounding_status = None  # Fail safe — never block primary response
+
+        # ── 8. Save AI response message ────────────────────────────────────────
         ai_msg = ChatMessage(
             session_id=session_uuid,
             sender_type="ai",
@@ -179,44 +213,52 @@ class ChatService:
                 "usage": usage_data,
                 "tool_calls": ai_response.get("tool_calls", []),
                 "sources_count": len(sources),
+                "grounding_status": grounding_status,
+                "injection_detected": injection_detected,
             },
         )
         db.session.add(ai_msg)
         db.session.flush()
 
-        # ── 7. Save citations — only for verified DB-resident materials ────────
-        #    Never fabricate a citation. Only save if document_id resolves to a
-        #    real StudyMaterial row.
-        citations_created: List[Dict[str, Any]] = []
-        for src in sources:
-            mat_id_str = src.get("document_id")
-            mat_uuid = None
-            try:
-                mat_uuid = uuid.UUID(mat_id_str) if mat_id_str else None
-            except (ValueError, TypeError):
-                pass
+        # ── 9. Citation verification (Cycle 5) ────────────────────────────────
+        #    All citations verified against DB: existence + not-deleted + APPROVED
+        #    + institution match. Fabricated or cross-institution citations dropped.
+        verified_citations = self.citation_verifier.verify_citations(
+            raw_sources=sources,
+            institution_id=institution_id or "",
+        )
 
-            if mat_uuid:
-                mat_exists = db.session.query(StudyMaterial).filter_by(id=mat_uuid).first()
-                if mat_exists:
-                    cit = AICitation(
-                        message_id=ai_msg.id,
-                        study_material_id=mat_uuid,
-                        excerpt=src.get("snippet", "")[:500],
-                        relevance_score=src.get("score", 0.0),
-                    )
-                    db.session.add(cit)
-                    citations_created.append({
-                        "study_material_id": str(mat_uuid),
-                        "title": mat_exists.title,
-                        "relevance_score": src.get("score", 0.0),
-                    })
+        citations_created: List[Dict[str, Any]] = []
+        for vc in verified_citations:
+            mat_uuid = uuid.UUID(vc["study_material_id"])
+            cit = AICitation(
+                message_id=ai_msg.id,
+                study_material_id=mat_uuid,
+                chunk_index=vc.get("chunk_index"),
+                excerpt=vc.get("excerpt", "")[:500],
+                relevance_score=vc.get("relevance_score", 0.0),
+            )
+            db.session.add(cit)
+            citations_created.append({
+                "document_id": vc["study_material_id"],
+                "study_material_id": vc["study_material_id"],
+                "title": vc["title"],
+                "chunk_index": vc.get("chunk_index"),
+                "relevance_score": vc.get("relevance_score", 0.0),
+                "excerpt": vc.get("excerpt_short", ""),
+            })
 
         db.session.commit()
 
-        # ── 8. Confidence from top citation score ──────────────────────────────
+        # ── 10. Confidence scoring (Cycle 5) ──────────────────────────────────
+        #    Multi-signal score: top/avg RRF score + chunk count + diversity + grounding.
+        #    Also preserve legacy HIGH/MEDIUM/LOW label for backward compatibility.
+        confidence_result = self.confidence_scorer.score(
+            sources=verified_citations or sources,
+            grounding_status=grounding_status,
+        )
         top_score = sources[0].get("score", 0.0) if sources else 0.0
-        confidence = self.rag.calculate_confidence(top_score)
+        confidence = self.rag.calculate_confidence(top_score)   # backward compat
 
         return {
             "session_id": str(session.id),
@@ -226,8 +268,13 @@ class ChatService:
             "model_used": model_used,
             "usage": usage_data,
             "citations": citations_created,
-            "confidence": confidence,
+            # ── Cycle 5 quality fields ────────────────────────────────────────
+            "confidence": confidence,                              # backward compat: HIGH/MEDIUM/LOW/NONE
+            "confidence_score": confidence_result["score"],        # new: 0.0–1.0 float
+            "confidence_level": confidence_result["level"],        # new: low/medium/high
+            "grounding_status": grounding_status,                  # new: SUPPORTED/PARTIALLY_SUPPORTED/UNSUPPORTED
         }
+
 
     # ── SSE streaming ──────────────────────────────────────────────────────────
 

@@ -1,0 +1,315 @@
+{% set active_page = "resources" %}
+{% extends "base.html" %}
+
+{% block title %}My Resources — CampusX{% endblock %}
+{% block topbar_title %}My Resources{% endblock %}
+
+{% block sidebar %}
+{% include "faculty/_nav.html" %}
+{% endblock %}
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">F</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Faculty</div>
+    <div class="sidebar-user-role">Faculty Workspace</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/faculty/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item" aria-current="page">My Resources</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-header-title">My Resources</h1>
+      <p class="page-header-sub">Materials you have uploaded to CampusX</p>
+    </div>
+    <div style="display:flex;gap:var(--cx-space-3);flex-shrink:0;">
+      <a href="/faculty/upload" class="btn btn-primary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Resource
+      </a>
+      <a href="/student/resources" class="btn btn-secondary btn-sm">Browse All Resources</a>
+    </div>
+  </div>
+
+  <!-- Status filter tabs -->
+  <div class="fx-filter-tabs" role="tablist" aria-label="Filter resources by status">
+    <button class="fx-filter-tab active" role="tab" aria-selected="true"  data-status="" id="tab-all">All</button>
+    <button class="fx-filter-tab" role="tab" aria-selected="false" data-status="PENDING" id="tab-pending">Pending</button>
+    <button class="fx-filter-tab" role="tab" aria-selected="false" data-status="APPROVED" id="tab-approved">Approved</button>
+    <button class="fx-filter-tab" role="tab" aria-selected="false" data-status="REJECTED" id="tab-rejected">Rejected</button>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div id="resources-loading" aria-busy="true" aria-label="Loading resources">
+    {% for _ in range(5) %}
+    <div class="fx-resource-row" style="pointer-events:none;">
+      <div class="fx-resource-row-main">
+        <div class="skeleton skeleton-title" style="width:55%;"></div>
+        <div class="skeleton skeleton-text short" style="width:200px;margin-top:var(--cx-space-2);"></div>
+      </div>
+      <div class="fx-resource-row-meta">
+        <div class="skeleton skeleton-text short" style="width:80px;"></div>
+      </div>
+      <div class="fx-resource-row-status">
+        <div class="skeleton skeleton-text short" style="width:70px;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Resources content -->
+  <div id="resources-content" style="display:none;">
+
+    <div class="fx-list-meta" id="resources-meta" style="display:none;" role="status" aria-live="polite"></div>
+
+    <!-- Resource list -->
+    <div id="resources-list" role="list" aria-label="Your uploaded resources"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="resources-empty" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div class="empty-state-title" id="resources-empty-title">No resources found</div>
+      <p class="empty-state-body" id="resources-empty-msg">You haven't uploaded any resources yet.</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="resources-error" style="display:none;">
+      <div class="empty-state">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div class="empty-state-title">Could not load resources</div>
+        <p class="empty-state-body" id="resources-error-msg">An error occurred. Please try again.</p>
+        <button class="btn btn-primary" onclick="loadResources(currentStatus)">Retry</button>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="resources-pagination" class="fx-pagination" style="display:none;" role="navigation" aria-label="Pagination">
+      <button class="btn btn-ghost btn-sm" id="btn-prev" onclick="prevPage()" aria-label="Previous page" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Previous
+      </button>
+      <span class="fx-pagination-info" id="pagination-info" aria-live="polite"></span>
+      <button class="btn btn-ghost btn-sm" id="btn-next" onclick="nextPage()" aria-label="Next page">
+        Next
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+  </div><!-- /#resources-content -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/faculty/resources');
+    return;
+  }
+  var _role = CampusX.auth.getRole();
+  if (_role === 'STUDENT' || _role === 'GUEST') {
+    window.location.replace(CampusX.dashboardForRole(_role));
+    return;
+  }
+
+  var LIMIT = 20;
+  var currentPage = 1;
+  var currentStatus = '';
+  var totalCount = 0;
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)  return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return Math.floor(diff/86400) + 'd ago';
+  }
+
+  function typeLabel(t) {
+    var m = {
+      'NOTE': 'Note', 'NOTES': 'Note',
+      'SLIDES': 'Slides', 'BOOK': 'Book',
+      'QUESTION_PAPER': 'Question Paper',
+      'REFERENCE': 'Reference', 'VIDEO': 'Video',
+      'ASSIGNMENT': 'Assignment', 'OTHER': 'Other'
+    };
+    return m[(t || '').toUpperCase()] || (t || 'Resource');
+  }
+
+  function typeColor(t) {
+    var k = (t || '').toUpperCase();
+    if (k === 'NOTE' || k === 'NOTES') return 'color:var(--cx-color-forest);background:rgba(36,72,58,0.08);';
+    if (k === 'QUESTION_PAPER') return 'color:var(--cx-color-terracotta);background:rgba(184,92,56,0.08);';
+    if (k === 'BOOK' || k === 'REFERENCE') return 'color:#7a5a10;background:var(--cx-color-ochre-pale);';
+    return 'color:var(--cx-color-moss);background:rgba(97,116,90,0.08);';
+  }
+
+  function statusBadge(s) {
+    var cls = {
+      'APPROVED': 'badge-success',
+      'PENDING': 'badge-warning',
+      'REJECTED': 'badge-error',
+      'CHANGES_REQUESTED': 'badge-warning'
+    }[s] || '';
+    var label = s === 'CHANGES_REQUESTED' ? 'Changes Requested' : (s || 'Unknown');
+    return '<span class="badge ' + cls + '" style="font-size:10px;">' + escHtml(label) + '</span>';
+  }
+
+  function renderResourceRow(r) {
+    var typeStyle = typeColor(r.material_type);
+    return '<div class="fx-resource-row" role="listitem">' +
+      '<div class="fx-resource-row-main">' +
+        '<div class="fx-resource-row-title">' + escHtml(r.title || 'Untitled') + '</div>' +
+        (r.description ? '<div class="fx-resource-row-desc">' + escHtml(r.description) + '</div>' : '') +
+      '</div>' +
+      '<div class="fx-resource-row-meta">' +
+        '<span class="badge" style="font-size:10px;' + typeStyle + '">' + escHtml(typeLabel(r.material_type)) + '</span>' +
+        (r.created_at ? '<span class="fx-resource-date">' + relativeTime(r.created_at) + '</span>' : '') +
+      '</div>' +
+      '<div class="fx-resource-row-status">' + statusBadge(r.status) + '</div>' +
+    '</div>';
+  }
+
+  function updatePagination() {
+    var totalPages = Math.ceil(totalCount / LIMIT);
+    var paginationEl = document.getElementById('resources-pagination');
+    var infoEl = document.getElementById('pagination-info');
+    var prevBtn = document.getElementById('btn-prev');
+    var nextBtn = document.getElementById('btn-next');
+
+    if (totalPages <= 1) { paginationEl.style.display = 'none'; return; }
+    paginationEl.style.display = '';
+    infoEl.textContent = 'Page ' + currentPage + ' of ' + totalPages;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+  }
+
+  async function loadResources(status, page) {
+    status = status != null ? status : currentStatus;
+    page = page != null ? page : 1;
+    currentStatus = status;
+    currentPage = page;
+
+    document.getElementById('resources-loading').style.display = '';
+    document.getElementById('resources-content').style.display = 'none';
+
+    try {
+      var params = new URLSearchParams({ limit: LIMIT, page: page });
+      if (status) params.set('status', status);
+
+      var res = await fetch('/api/v1/faculty/resources?' + params.toString(), {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() }
+      });
+
+      if (res.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      var json = await res.json();
+      if (!res.ok) {
+        throw new Error((json.error && json.error.message) || 'Failed to load resources.');
+      }
+
+      var resources = Array.isArray(json.data) ? json.data : [];
+      var meta = json.meta || {};
+      totalCount = meta.total != null ? meta.total : resources.length;
+
+      document.getElementById('resources-loading').style.display = 'none';
+      document.getElementById('resources-content').style.display = '';
+
+      // Meta
+      var metaEl = document.getElementById('resources-meta');
+      if (totalCount > 0) {
+        metaEl.textContent = totalCount + (totalCount === 1 ? ' resource' : ' resources') + (status ? ' (' + status.toLowerCase() + ')' : '');
+        metaEl.style.display = '';
+      } else {
+        metaEl.style.display = 'none';
+      }
+
+      if (resources.length === 0) {
+        document.getElementById('resources-empty').style.display = '';
+        var emptyMsg = document.getElementById('resources-empty-msg');
+        var emptyTitle = document.getElementById('resources-empty-title');
+        if (status) {
+          emptyTitle.textContent = 'No ' + status.toLowerCase() + ' resources';
+          emptyMsg.textContent = 'You have no resources with ' + status.toLowerCase() + ' status.';
+        } else {
+          emptyTitle.textContent = 'No resources found';
+          emptyMsg.textContent = 'You haven\'t uploaded any resources yet.';
+        }
+      } else {
+        document.getElementById('resources-list').innerHTML = resources.map(renderResourceRow).join('');
+      }
+
+      updatePagination();
+
+    } catch (err) {
+      document.getElementById('resources-loading').style.display = 'none';
+      document.getElementById('resources-content').style.display = '';
+      document.getElementById('resources-error').style.display = '';
+      document.getElementById('resources-error-msg').textContent = err && err.message ? err.message : 'Unable to load resources.';
+    }
+  }
+
+  window.loadResources = loadResources;
+  window.prevPage = function() { if (currentPage > 1) loadResources(currentStatus, currentPage - 1); };
+  window.nextPage = function() { loadResources(currentStatus, currentPage + 1); };
+
+  // Filter tab interaction
+  var tabs = document.querySelectorAll('.fx-filter-tab');
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      // Reset lists
+      document.getElementById('resources-list').innerHTML = '';
+      document.getElementById('resources-empty').style.display = 'none';
+      document.getElementById('resources-error').style.display = 'none';
+      document.getElementById('resources-meta').style.display = 'none';
+
+      loadResources(tab.dataset.status || '', 1);
+    });
+  });
+
+  // Sidebar user from cached token
+  var _user = CampusX.auth.getUser();
+  if (_user && _user.full_name) {
+    var _initials = _user.full_name.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+    document.getElementById('sidebar-name').textContent = _user.full_name;
+    document.getElementById('sidebar-avatar').textContent = _initials;
+  }
+
+  loadResources('', 1);
+})();
+</script>
+{% endblock %}

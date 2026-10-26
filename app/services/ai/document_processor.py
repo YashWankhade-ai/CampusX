@@ -12,9 +12,12 @@ logger = logging.getLogger(__name__)
 
 # Fallback-safe imports for document formats
 try:
-    import PyPDF2
+    import pypdf as PyPDF2
 except ImportError:
-    PyPDF2 = None
+    try:
+        import PyPDF2
+    except ImportError:
+        PyPDF2 = None
 
 try:
     import docx
@@ -33,6 +36,38 @@ except ImportError:
     Image = pytesseract = None
 
 class DocumentProcessor:
+    _text_cache = {}
+
+    @classmethod
+    def extract_text_for_material(cls, material) -> str:
+        """Extract and cache text from a StudyMaterial's latest uploaded file."""
+        if not material or not getattr(material, 'versions', None):
+            return ""
+        mat_id = str(material.id)
+        if mat_id in cls._text_cache:
+            return cls._text_cache[mat_id]
+
+        from flask import current_app
+        import os
+
+        extracted = ""
+        try:
+            latest_v = material.versions[0]
+            if latest_v and latest_v.file_metadata:
+                fm = latest_v.file_metadata
+                upload_dir = current_app.config.get('UPLOAD_DIR', './uploads') if current_app else './uploads'
+                full_path = os.path.join(upload_dir, fm.storage_path)
+                if os.path.exists(full_path):
+                    with open(full_path, 'rb') as f:
+                        fbytes = f.read()
+                    extracted = cls.extract_text(fbytes, fm.original_name, fm.mime_type or "")
+        except Exception as e:
+            logger.warning(f"Error extracting text for material {mat_id}: {e}")
+
+        if extracted:
+            cls._text_cache[mat_id] = extracted
+        return extracted
+
     @classmethod
     def extract_text(cls, file_bytes: bytes, filename: str, mime_type: str = "") -> str:
         """

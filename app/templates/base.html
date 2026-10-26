@@ -1,28 +1,116 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" x-data :data-theme=".theme.mode">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CampusX</title>
-    <link href="/static/css/design-system.css" rel="stylesheet">
-    <link href="/static/css/layout.css" rel="stylesheet">
-    <link href="/static/css/components.css" rel="stylesheet">
-    <link href="/static/css/utilities.css" rel="stylesheet">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="/static/js/app.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CampusX — Learn Smarter. Search Faster. Powered by AI.">
+  <title>{% block title %}CampusX{% endblock %}</title>
+
+  <!-- Design System (tokens → base → layout → components) -->
+  <link rel="stylesheet" href="/static/css/design-system.css">
+
+  <!-- Page-level styles -->
+  {% block head_extra %}{% endblock %}
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar glass-panel">
-            <h2>CampusX</h2>
-            <button @click=".theme.toggle()" class="btn-primary mt-4">Toggle Theme</button>
-            <nav class="mt-4">
-                {% block sidebar %}{% endblock %}
-            </nav>
-        </aside>
-        <main class="main-content">
-            {% block content %}{% endblock %}
-        </main>
+
+<!-- App Shell -->
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+    <!-- Brand -->
+    <div class="sidebar-header">
+      <a href="/" class="cx-wordmark" aria-label="CampusX home">
+        <span class="cx-wordmark-dot" aria-hidden="true"></span>
+        CampusX
+      </a>
     </div>
+
+    <!-- Nav content injected per role -->
+    {% block sidebar %}
+    <nav class="sidebar-nav" aria-label="Navigation">
+      <a href="/" class="nav-item">
+        <svg class="nav-item-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M2 7.5L10 2l8 5.5V18a1 1 0 01-1 1H3a1 1 0 01-1-1V7.5z"/>
+        </svg>
+        Dashboard
+      </a>
+    </nav>
+    {% endblock %}
+
+    <!-- User footer -->
+    <div class="sidebar-footer">
+      {% block sidebar_user %}
+      <div class="sidebar-user">
+        <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;">U</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">User</div>
+          <div class="sidebar-user-role">Student</div>
+        </div>
+      </div>
+      {% endblock %}
+    </div>
+  </aside>
+
+  <!-- Drawer overlay (mobile) -->
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+
+  <!-- Main column -->
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar" role="banner">
+      <div class="topbar-left">
+        <!-- Mobile menu trigger -->
+        <button class="menu-trigger" id="menuTrigger" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+
+        <!-- Breadcrumb -->
+        <nav aria-label="Breadcrumb">
+          {% block breadcrumb %}{% endblock %}
+        </nav>
+
+        <!-- Page title (mobile/compact) -->
+        <span class="topbar-page-title">{% block topbar_title %}{% endblock %}</span>
+      </div>
+
+      <div class="topbar-right">
+        {% block topbar_actions %}
+        <!-- Notifications -->
+        <button class="btn-icon btn-ghost" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+        </button>
+        <!-- User menu -->
+        <button class="btn btn-ghost btn-sm" aria-label="User menu" aria-haspopup="true">
+          <div class="avatar avatar-sm avatar-forest">U</div>
+        </button>
+        {% endblock %}
+      </div>
+    </header>
+
+    <!-- Page body -->
+    <main class="page-body" id="main-content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div><!-- /.main-content -->
+</div><!-- /.app-shell -->
+
+<!-- Toast container (ARIA live region) -->
+<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+<!-- Core JS -->
+<script src="/static/js/app.js"></script>
+<script src="/static/js/api.js"></script>
+{% block scripts %}{% endblock %}
+
 </body>
 </html>

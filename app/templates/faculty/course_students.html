@@ -1,0 +1,240 @@
+{% set active_page = "students" %}
+{% extends "base.html" %}
+
+{% block title %}Course Students — CampusX{% endblock %}
+{% block topbar_title %}Students{% endblock %}
+
+{% block sidebar %}
+{% include "faculty/_nav.html" %}
+{% endblock %}
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">F</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Faculty</div>
+    <div class="sidebar-user-role">Faculty Workspace</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/faculty/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="/faculty/courses">Courses</a></li>
+  <li class="breadcrumb-item" aria-current="page" id="breadcrumb-course">Students</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-header-title" id="page-course-name">Course Students</h1>
+      <p class="page-header-sub" id="page-course-code"></p>
+    </div>
+  </div>
+
+  <!-- Loading skeleton -->
+  <div id="students-loading" aria-busy="true" aria-label="Loading students">
+    <div class="fx-student-table-wrap">
+      <table class="fx-student-table" aria-label="Students loading">
+        <thead>
+          <tr>
+            <th scope="col">Student</th>
+            <th scope="col" class="fx-col-display">Display Name</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for _ in range(5) %}
+          <tr>
+            <td><div class="skeleton skeleton-text med"></div></td>
+            <td class="fx-col-display"><div class="skeleton skeleton-text short"></div></td>
+            <td><div class="skeleton skeleton-text short" style="width:60px;"></div></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Students content -->
+  <div id="students-content" style="display:none;">
+
+    <!-- Count meta -->
+    <div class="fx-list-meta" id="students-meta" style="display:none;" role="status" aria-live="polite"></div>
+
+    <!-- Desktop table -->
+    <div class="fx-student-table-wrap" id="students-table-wrap" style="display:none;">
+      <table class="fx-student-table" aria-label="Enrolled students">
+        <thead>
+          <tr>
+            <th scope="col">Student</th>
+            <th scope="col" class="fx-col-display">Display Name</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody id="students-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Mobile stacked cards -->
+    <div class="fx-student-cards" id="students-cards" style="display:none;" role="list" aria-label="Enrolled students"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="students-empty" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+      </svg>
+      <div class="empty-state-title">No students enrolled</div>
+      <p class="empty-state-body">No students are enrolled in this course yet.</p>
+      <a href="/faculty/courses" class="btn btn-secondary">Back to courses</a>
+    </div>
+
+    <!-- Error / not-found state -->
+    <div id="students-error" style="display:none;">
+      <div class="empty-state">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div class="empty-state-title" id="students-error-title">Course not found</div>
+        <p class="empty-state-body" id="students-error-msg">This course was not found or you don't have access to it.</p>
+        <a href="/faculty/courses" class="btn btn-secondary">Back to courses</a>
+      </div>
+    </div>
+
+  </div><!-- /#students-content -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname));
+    return;
+  }
+  var _role = CampusX.auth.getRole();
+  if (_role === 'STUDENT' || _role === 'GUEST') {
+    window.location.replace(CampusX.dashboardForRole(_role));
+    return;
+  }
+
+  // ── course_id comes from Flask via Jinja (server-side, not client URL parsing) ──
+  var COURSE_ID = {{ course_id | tojson }};
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function statusBadge(status) {
+    var cls = status === 'active' ? 'badge-success' : status === 'suspended' ? 'badge-error' : '';
+    return '<span class="badge ' + cls + '">' + escHtml(status || 'unknown') + '</span>';
+  }
+
+  function renderStudentRow(s) {
+    // Backend returns: id, full_name, display_name, role, status
+    // NO email — deliberately omitted by backend _safe_student_dict
+    return '<tr>' +
+      '<td class="fx-student-name">' + escHtml(s.full_name || '—') + '</td>' +
+      '<td class="fx-col-display fx-student-display">' + escHtml(s.display_name || s.full_name || '—') + '</td>' +
+      '<td>' + statusBadge(s.status) + '</td>' +
+    '</tr>';
+  }
+
+  function renderStudentCard(s) {
+    return '<div class="fx-student-card" role="listitem">' +
+      '<div class="fx-student-card-main">' +
+        '<div class="fx-student-card-name">' + escHtml(s.full_name || '—') + '</div>' +
+        (s.display_name && s.display_name !== s.full_name
+          ? '<div class="fx-student-card-display">' + escHtml(s.display_name) + '</div>'
+          : '') +
+      '</div>' +
+      '<div class="fx-student-card-status">' + statusBadge(s.status) + '</div>' +
+    '</div>';
+  }
+
+  async function loadStudents() {
+    document.getElementById('students-loading').style.display = '';
+    document.getElementById('students-content').style.display = 'none';
+
+    try {
+      var res = await fetch('/api/v1/faculty/courses/' + encodeURIComponent(COURSE_ID) + '/students', {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() }
+      });
+
+      if (res.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      var json = await res.json();
+
+      document.getElementById('students-loading').style.display = 'none';
+      document.getElementById('students-content').style.display = '';
+
+      if (res.status === 404) {
+        // IDOR-safe: same message for not-found and unauthorized
+        document.getElementById('students-error').style.display = '';
+        return;
+      }
+
+      if (!res.ok) {
+        document.getElementById('students-error').style.display = '';
+        document.getElementById('students-error-title').textContent = 'Could not load students';
+        var errMsg = (json.error && json.error.message) || 'An error occurred. Please try again.';
+        document.getElementById('students-error-msg').textContent = errMsg;
+        return;
+      }
+
+      var students = Array.isArray(json.data) ? json.data : [];
+      var total = (json.meta && json.meta.total != null) ? json.meta.total : students.length;
+
+      // Meta count
+      var metaEl = document.getElementById('students-meta');
+      if (total > 0) {
+        metaEl.textContent = total + (total === 1 ? ' student enrolled' : ' students enrolled');
+        metaEl.style.display = '';
+      }
+
+      if (students.length === 0) {
+        document.getElementById('students-empty').style.display = '';
+        return;
+      }
+
+      // Desktop table
+      document.getElementById('students-tbody').innerHTML = students.map(renderStudentRow).join('');
+      document.getElementById('students-table-wrap').style.display = '';
+
+      // Mobile cards
+      document.getElementById('students-cards').innerHTML = students.map(renderStudentCard).join('');
+      document.getElementById('students-cards').style.display = '';
+
+    } catch (err) {
+      document.getElementById('students-loading').style.display = 'none';
+      document.getElementById('students-content').style.display = '';
+      document.getElementById('students-error').style.display = '';
+      document.getElementById('students-error-title').textContent = 'Could not load students';
+      document.getElementById('students-error-msg').textContent = err && err.message ? err.message : 'Unable to load student list.';
+    }
+  }
+
+  // Sidebar user from cached token
+  var _user = CampusX.auth.getUser();
+  if (_user && _user.full_name) {
+    var _initials = _user.full_name.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+    document.getElementById('sidebar-name').textContent = _user.full_name;
+    document.getElementById('sidebar-avatar').textContent = _initials;
+  }
+
+  loadStudents();
+})();
+</script>
+{% endblock %}

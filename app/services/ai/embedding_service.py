@@ -1,8 +1,11 @@
 from typing import List, Dict, Any, Optional
 try:
-    import PyPDF2
+    import pypdf as PyPDF2
 except ImportError:
-    PyPDF2 = None
+    try:
+        import PyPDF2
+    except ImportError:
+        PyPDF2 = None
 import io
 from .clients import AIClients
 

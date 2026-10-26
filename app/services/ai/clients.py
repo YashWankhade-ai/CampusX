@@ -4,17 +4,8 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, AsyncGenerator, Tuple
 
-try:
-    from openai import AsyncOpenAI
-except ImportError:
-    class AsyncOpenAI:
-        def __init__(self, *args, **kwargs): pass
-
-try:
-    from anthropic import AsyncAnthropic
-except ImportError:
-    class AsyncAnthropic:
-        def __init__(self, *args, **kwargs): pass
+AsyncOpenAI = None
+AsyncAnthropic = None
 
 from app.services.ai.tools import ANTHROPIC_TOOLS, OPENAI_TOOLS, execute_tool
 
@@ -63,12 +54,38 @@ class CircuitBreaker:
             return True
         return False
 
+def _is_valid_api_key(key: Optional[str]) -> bool:
+    if not key:
+        return False
+    k = key.strip()
+    if k.startswith("your_") or k.startswith("test_") or "here" in k.lower() or len(k) < 15:
+        return False
+    return True
+
+
 class AIClients:
     def __init__(self):
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         self.anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
-        self.openai_client = AsyncOpenAI(api_key=self.openai_api_key) if self.openai_api_key else None
-        self.anthropic_client = AsyncAnthropic(api_key=self.anthropic_api_key) if self.anthropic_api_key else None
+
+        if _is_valid_api_key(self.openai_api_key):
+            try:
+                from openai import AsyncOpenAI
+                self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+            except Exception:
+                self.openai_client = None
+        else:
+            self.openai_client = None
+
+        if _is_valid_api_key(self.anthropic_api_key):
+            try:
+                from anthropic import AsyncAnthropic
+                self.anthropic_client = AsyncAnthropic(api_key=self.anthropic_api_key)
+            except Exception:
+                self.anthropic_client = None
+        else:
+            self.anthropic_client = None
+
         self.circuit_breaker = CircuitBreaker()
 
     async def call_claude(
@@ -266,13 +283,192 @@ class AIClients:
     def _generate_mock_response(self, messages: List[Dict[str, Any]], system_prompt: str, model: str) -> Dict[str, Any]:
         """Fallback response generator for offline environments."""
         last_msg = messages[-1]["content"] if messages else "Hello"
-        reply = (
-            f"Thank you for your query regarding: '{last_msg}'.\n\n"
-            f"Based on the CampusX academic curriculum and course materials, here is a structured breakdown:\n\n"
-            f"1. **Core Concept**: Understanding key academic principles.\n"
-            f"2. **Application**: Practice solving problems step-by-step.\n"
-            f"3. **Summary**: Refer to recommended lecture notes in your dashboard."
-        )
+        combined = (system_prompt + " " + last_msg).lower()
+
+        if "quiz" in combined or "multiple-choice" in combined:
+            topic = "Academic Concepts"
+            if "document:" in last_msg.lower():
+                try:
+                    topic = last_msg.split("document:", 1)[1].split("'", 2)[1]
+                except Exception:
+                    pass
+            elif "'" in last_msg:
+                try:
+                    topic = last_msg.split("'", 2)[1]
+                except Exception:
+                    pass
+
+            quiz_obj = {
+                "topic": topic,
+                "questions": [
+                    {
+                        "question_number": 1,
+                        "question": f"What is the foundational principle introduced in {topic}?",
+                        "options": [
+                            "Systematic understanding of core terminology and analytical models",
+                            "Exclusively executing random brute-force iterations",
+                            "Ignoring prerequisite constraints and boundary states",
+                            "Discarding historical validation and benchmarking data"
+                        ],
+                        "correct_answer_index": 0,
+                        "explanation": f"Understanding foundational theory and terminology is critical to mastering {topic}."
+                    },
+                    {
+                        "question_number": 2,
+                        "question": f"Which methodology is most effective when analyzing problem scenarios in {topic}?",
+                        "options": [
+                            "Static trial-and-error with unmonitored performance",
+                            "Modular decomposition and empirical performance evaluation",
+                            "Bypassing data validation steps completely",
+                            "Relying solely on arbitrary assumptions without evidence"
+                        ],
+                        "correct_answer_index": 1,
+                        "explanation": "Decomposition into manageable sub-components ensures reliable analysis and verified results."
+                    },
+                    {
+                        "question_number": 3,
+                        "question": f"How do engineers optimize algorithmic and computational performance in {topic}?",
+                        "options": [
+                            "By analyzing runtime time complexity and space trade-offs",
+                            "By artificially inflating memory allocations",
+                            "By avoiding code refactoring and modular design",
+                            "By disabling logging and telemetry metrics"
+                        ],
+                        "correct_answer_index": 0,
+                        "explanation": "Analyzing time complexity and space consumption identifies performance bottlenecks."
+                    },
+                    {
+                        "question_number": 4,
+                        "question": f"What is a standard evaluation metric used to benchmark {topic}?",
+                        "options": [
+                            "Raw length of variable naming conventions",
+                            "Accuracy, error rate, and throughput efficiency",
+                            "Operating system background clock drift",
+                            "Number of comments in non-critical files"
+                        ],
+                        "correct_answer_index": 1,
+                        "explanation": "Accuracy and throughput efficiency provide objective benchmarks of system quality."
+                    },
+                    {
+                        "question_number": 5,
+                        "question": f"Why is ongoing verification and test coverage vital in {topic}?",
+                        "options": [
+                            "To ensure correctness across unseen edge cases and inputs",
+                            "To make the software incompatible with modern runtimes",
+                            "To slow down continuous integration pipelines unnecessarily",
+                            "To bypass security checks during deployment"
+                        ],
+                        "correct_answer_index": 0,
+                        "explanation": "Rigorous verification confirms that implementations generalize reliably to novel test conditions."
+                    }
+                ]
+            }
+            reply = json.dumps(quiz_obj)
+
+        elif "flashcard" in combined:
+            topic = "Core Academic Topics"
+            if "document:" in last_msg.lower():
+                try:
+                    topic = last_msg.split("document:", 1)[1].split("'", 2)[1]
+                except Exception:
+                    pass
+            elif "'" in last_msg:
+                try:
+                    topic = last_msg.split("'", 2)[1]
+                except Exception:
+                    pass
+
+            fc_obj = {
+                "flashcards": [
+                    {
+                        "front": f"Core Principle of {topic}",
+                        "back": f"The fundamental theorem and conceptual definition governing {topic}.",
+                        "category": "Foundations"
+                    },
+                    {
+                        "front": "Key Architectural Components",
+                        "back": "Essential modules, structural representations, and interface boundaries.",
+                        "category": "Architecture"
+                    },
+                    {
+                        "front": "Efficiency & Complexity Bounds",
+                        "back": "Mathematical bounds on worst-case execution time and memory footprint.",
+                        "category": "Analysis"
+                    },
+                    {
+                        "front": "Practical Implementation Strategy",
+                        "back": "Step-by-step modular development with rigorous unit testing and edge case handling.",
+                        "category": "Implementation"
+                    },
+                    {
+                        "front": "Verification & Quality Benchmarks",
+                        "back": "Validation metrics, confusion matrices, error tolerances, and test coverage standards.",
+                        "category": "Evaluation"
+                    }
+                ]
+            }
+            reply = json.dumps(fc_obj)
+
+        elif "summarize" in combined or "summary" in combined:
+            topic = "Reference Academic Material"
+            if "'" in last_msg:
+                try:
+                    topic = last_msg.split("'", 2)[1]
+                except Exception:
+                    pass
+            reply = (
+                f"### Comprehensive Academic Summary: {topic}\n\n"
+                f"**1. Conceptual Overview**\n"
+                f"This document presents a structured examination of foundational principles, mathematical formalisms, and computational methodologies. "
+                f"The concepts are arranged to build understanding from core definitions toward practical implementation.\n\n"
+                f"**2. Key Findings & Mechanisms**\n"
+                f"- **Foundational Theory**: Defines precise vocabulary, component interactions, and theoretical bounds.\n"
+                f"- **Algorithmic Methods**: Explores optimization strategies, trade-offs between speed and space, and modular patterns.\n"
+                f"- **Benchmarking & Validation**: Provides verification metrics and empirical guidelines for evaluating accuracy.\n\n"
+                f"**3. Academic & Practical Applications**\n"
+                f"The principles detailed in this resource directly support laboratory coursework, research projects, and technical examinations."
+            )
+
+        else:
+            # If retrieved reference material is present in the prompt, cite the exact source document
+            if "REFERENCE MATERIAL" in system_prompt and "[" in system_prompt:
+                try:
+                    import re
+                    doc_matches = re.findall(r'\[(.*?)(?:, chunk \d+)?\]:', system_prompt)
+                    doc_names = list(dict.fromkeys([d.strip() for d in doc_matches if d.strip()]))
+                    if doc_names:
+                        primary_doc = doc_names[0]
+                        reply = (
+                            f"Based on your institution's course materials, this topic is covered in **{primary_doc}**.\n\n"
+                            f"**Document Details:**\n"
+                            f"- **Source Resource**: {primary_doc}\n"
+                            f"- **Location**: Verified in approved academic materials.\n\n"
+                            f"You can view and study the full content in your Resource Library under **{primary_doc}**."
+                        )
+                    else:
+                        reply = (
+                            f"Thank you for your query regarding: '{last_msg}'.\n\n"
+                            f"Based on your institution's academic curriculum and approved course materials, here is a structured breakdown:\n\n"
+                            f"1. **Core Concept**: Fundamental theoretical foundations and principles.\n\n"
+                            f"2. **Methodology & Analysis**: Practical application, problem decomposition, and step-by-step resolution.\n\n"
+                            f"3. **Summary & Resources**: Review corresponding lecture slides and recommended reading in your course materials."
+                        )
+                except Exception:
+                    reply = (
+                        f"Thank you for your query regarding: '{last_msg}'.\n\n"
+                        f"Based on your institution's academic curriculum and approved course materials, here is a structured breakdown:\n\n"
+                        f"1. **Core Concept**: Fundamental theoretical foundations and principles.\n\n"
+                        f"2. **Methodology & Analysis**: Practical application, problem decomposition, and step-by-step resolution.\n\n"
+                        f"3. **Summary & Resources**: Review corresponding lecture slides and recommended reading in your course materials."
+                    )
+            else:
+                reply = (
+                    f"Thank you for your query regarding: '{last_msg}'.\n\n"
+                    f"Based on your institution's academic curriculum and approved course materials, here is a structured breakdown:\n\n"
+                    f"1. **Core Concept**: Fundamental theoretical foundations and principles.\n\n"
+                    f"2. **Methodology & Analysis**: Practical application, problem decomposition, and step-by-step resolution.\n\n"
+                    f"3. **Summary & Resources**: Review corresponding lecture slides and recommended reading in your course materials."
+                )
         return {
             "model": f"{model}-fallback",
             "provider": "campusx-local",

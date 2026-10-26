@@ -1,19 +1,259 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <title>CampusX Auth</title>
-    <link href="/static/css/design-system.css" rel="stylesheet">
-    <link href="/static/css/components.css" rel="stylesheet">
-</head>
-<body style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    <div class="glass-panel" style="width: 400px; text-align: center;">
-        <h1>Register</h1>
-        <form>
-            <input type="text" placeholder="Username" class="mb-4 p-4" style="width: 100%; border-radius: 8px; border: 1px solid #ccc;"><br>
-            <input type="password" placeholder="Password" class="mb-4 p-4" style="width: 100%; border-radius: 8px; border: 1px solid #ccc;"><br>
-            <button class="btn-primary" style="width: 100%;">Submit</button>
-        </form>
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Create Institutional ID — CampusX{% endblock %}
+{% block meta_description %}Join CampusX to create your student or faculty institutional ID and access AI-powered academic resources.{% endblock %}
+
+{% block topbar_right %}
+<a href="/login" class="btn btn-secondary btn-sm">Log in</a>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-panel-header">
+  <h1 class="auth-panel-title">Create Institutional ID</h1>
+  <p class="auth-panel-sub">Generate your verified Student or Faculty institutional ID with academic branch integration.</p>
+</div>
+
+<!-- Error banner -->
+<div class="alert alert-error" id="auth-error" role="alert" aria-live="assertive" style="{% if error %}display:flex;{% else %}display:none;{% endif %}margin-bottom:var(--cx-space-5);">
+  <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+  </svg>
+  <span id="auth-error-msg">{{ error or '' }}</span>
+</div>
+
+<form class="auth-form" id="register-form" method="POST" action="/register" novalidate>
+
+  <!-- Name row -->
+  <div class="name-row" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-3);">
+    <div class="form-group">
+      <label class="form-label" for="first_name">First name</label>
+      <input class="input" id="first_name" name="first_name" type="text"
+        autocomplete="given-name" placeholder="Priya" required aria-required="true"
+        aria-describedby="first-name-error">
+      <span class="form-error" id="first-name-error" role="alert" style="display:none;"></span>
     </div>
-</body>
-</html>
+    <div class="form-group">
+      <label class="form-label" for="last_name">Last name</label>
+      <input class="input" id="last_name" name="last_name" type="text"
+        autocomplete="family-name" placeholder="Sharma" required aria-required="true"
+        aria-describedby="last-name-error">
+      <span class="form-error" id="last-name-error" role="alert" style="display:none;"></span>
+    </div>
+  </div>
+
+  <!-- Role selection -->
+  <div class="form-group">
+    <label class="form-label">I am creating an ID as</label>
+    <div style="display:flex;gap:var(--cx-space-4);padding-top:2px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--cx-text-body-sm);cursor:pointer;color:var(--cx-text-primary);">
+        <input type="radio" name="role" value="STUDENT" checked style="accent-color:var(--cx-color-forest);"> Student
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:var(--cx-text-body-sm);cursor:pointer;color:var(--cx-text-primary);">
+        <input type="radio" name="role" value="FACULTY" style="accent-color:var(--cx-color-forest);"> Faculty
+      </label>
+    </div>
+  </div>
+
+  <!-- Department / Branch selection -->
+  <div class="form-group">
+    <label class="form-label" for="reg_department">Department / Academic Branch</label>
+    <select class="input" id="reg_department" name="department_id" style="background:var(--cx-surface);width:100%;">
+      {% for d in departments %}
+      <option value="{{ d.id }}" data-branch="{{ d.branch_code }}" data-display="{{ d.display_code or d.branch_code }}" {% if d.branch_code == 'CSE' %}selected{% endif %}>
+        {{ d.display_code or d.branch_code }} &mdash; {{ d.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="email">Email address</label>
+    <input class="input" id="email" name="email" type="email"
+      autocomplete="email" placeholder="you@university.edu"
+      required aria-required="true" aria-describedby="email-error">
+    <span class="form-hint">Use your institutional email if available.</span>
+    <span class="form-error" id="email-error" role="alert" style="display:none;"></span>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="password">Password</label>
+    <div class="input-wrap">
+      <input class="input" id="password" name="password" type="password"
+        autocomplete="new-password" placeholder="At least 8 characters"
+        required aria-required="true" aria-describedby="password-error password-strength">
+      <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Show password" aria-pressed="false">
+        <svg id="pw-icon-show" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <svg id="pw-icon-hide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" style="display:none;">
+          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      </button>
+    </div>
+    <!-- Password strength indicator -->
+    <div id="password-strength" style="margin-top:var(--cx-space-2);">
+      <div class="progress" style="height:4px;">
+        <div id="strength-bar" class="progress-bar" style="width:0%;transition:width 0.3s ease,background-color 0.3s ease;"></div>
+      </div>
+      <span id="strength-label" style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);margin-top:4px;display:block;"></span>
+    </div>
+    <span class="form-error" id="password-error" role="alert" style="display:none;"></span>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full" id="register-btn" style="justify-content:center;">
+    <span id="register-btn-text">Create account</span>
+    <svg id="register-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      style="display:none;animation:spin 0.8s linear infinite;" aria-hidden="true">
+      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-opacity="0.25"/>
+      <path d="M21 12a9 9 0 00-9-9"/>
+    </svg>
+  </button>
+
+</form>
+
+<p class="mt-6" style="font-size:var(--cx-text-caption);text-align:center;color:var(--cx-text-muted);">
+  By creating an account, you agree to the CampusX Terms of Service.
+</p>
+
+<p class="mt-4" style="font-size:var(--cx-text-body-sm);text-align:center;color:var(--cx-text-muted);">
+  Already have an account?
+  <a href="/login" style="color:var(--cx-text-link);font-weight:var(--cx-weight-medium);">Log in</a>
+</p>
+
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form        = document.getElementById('register-form');
+  const firstEl     = document.getElementById('first_name');
+  const lastEl      = document.getElementById('last_name');
+  const emailEl     = document.getElementById('email');
+  const passEl      = document.getElementById('password');
+  const btn         = document.getElementById('register-btn');
+  const btnText     = document.getElementById('register-btn-text');
+  const spinner     = document.getElementById('register-spinner');
+  const errBanner   = document.getElementById('auth-error');
+  const errMsg      = document.getElementById('auth-error-msg');
+  const strengthBar = document.getElementById('strength-bar');
+  const strengthLbl = document.getElementById('strength-label');
+
+
+  // Password toggle
+  const pwToggle   = document.getElementById('pw-toggle');
+  const pwIconShow = document.getElementById('pw-icon-show');
+  const pwIconHide = document.getElementById('pw-icon-hide');
+  pwToggle.addEventListener('click', () => {
+    const visible = passEl.type === 'text';
+    passEl.type = visible ? 'password' : 'text';
+    pwIconShow.style.display = visible ? '' : 'none';
+    pwIconHide.style.display = visible ? 'none' : '';
+    pwToggle.setAttribute('aria-pressed', String(!visible));
+  });
+
+  // Password strength
+  passEl.addEventListener('input', () => {
+    clearFieldError(passEl, document.getElementById('password-error'));
+    const v = passEl.value;
+    let score = 0;
+    if (v.length >= 8)  score++;
+    if (v.length >= 12) score++;
+    if (/[A-Z]/.test(v)) score++;
+    if (/[0-9]/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+
+    const pct  = Math.round((score / 5) * 100);
+    const cfg = [
+      { color: 'var(--cx-color-brick)',       label: '' },
+      { color: 'var(--cx-color-brick)',       label: 'Very weak' },
+      { color: 'var(--cx-color-terracotta)',  label: 'Weak' },
+      { color: 'var(--cx-color-ochre)',       label: 'Fair' },
+      { color: 'var(--cx-color-moss)',        label: 'Good' },
+      { color: 'var(--cx-color-forest)',      label: 'Strong' },
+    ][score] || { color: '', label: '' };
+
+    strengthBar.style.width = v.length ? pct + '%' : '0%';
+    strengthBar.style.backgroundColor = cfg.color;
+    strengthLbl.textContent = v.length ? cfg.label : '';
+  });
+
+  function showFieldError(el, errEl, msg) {
+    el.classList.add('is-error'); errEl.textContent = msg; errEl.style.display = '';
+    el.setAttribute('aria-invalid', 'true');
+  }
+  function clearFieldError(el, errEl) {
+    el.classList.remove('is-error'); errEl.style.display = '';
+    el.removeAttribute('aria-invalid');
+  }
+  function showBanner(msg) { errMsg.textContent = msg; errBanner.classList.add('visible'); }
+  function hideBanner()    { errBanner.classList.remove('visible'); }
+  function setLoading(on)  {
+    btn.disabled = on;
+    btnText.textContent = on ? 'Creating ID…' : 'Create account & ID';
+    spinner.style.display = on ? '' : 'none';
+  }
+
+  // Live validation on blur
+  [firstEl, lastEl].forEach(el => {
+    el.addEventListener('blur', () => {
+      const errEl = document.getElementById(el.id === 'first_name' ? 'first-name-error' : 'last-name-error');
+      if (!el.value.trim()) showFieldError(el, errEl, 'This field is required.');
+      else clearFieldError(el, errEl);
+    });
+    el.addEventListener('input', () => {
+      const errEl = document.getElementById(el.id === 'first_name' ? 'first-name-error' : 'last-name-error');
+      clearFieldError(el, errEl);
+    });
+  });
+  emailEl.addEventListener('blur', () => {
+    const e = document.getElementById('email-error');
+    if (!emailEl.value.trim()) showFieldError(emailEl, e, 'Email is required.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) showFieldError(emailEl, e, 'Enter a valid email address.');
+    else clearFieldError(emailEl, e);
+  });
+  emailEl.addEventListener('input', () => clearFieldError(emailEl, document.getElementById('email-error')));
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideBanner();
+
+    const first    = firstEl.value.trim();
+    const last     = lastEl.value.trim();
+    const email    = emailEl.value.trim();
+    const password = passEl.value;
+    let valid = true;
+
+    if (!first) { showFieldError(firstEl, document.getElementById('first-name-error'), 'First name is required.'); valid = false; }
+    if (!last)  { showFieldError(lastEl,  document.getElementById('last-name-error'),  'Last name is required.');  valid = false; }
+    if (!email) { showFieldError(emailEl, document.getElementById('email-error'), 'Email is required.'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showFieldError(emailEl, document.getElementById('email-error'), 'Enter a valid email address.'); valid = false; }
+    if (!password) { showFieldError(passEl, document.getElementById('password-error'), 'Password is required.'); valid = false; }
+    else if (password.length < 8) { showFieldError(passEl, document.getElementById('password-error'), 'Password must be at least 8 characters.'); valid = false; }
+    if (!valid) return;
+
+    setLoading(true);
+    try {
+      const role = (form.querySelector('input[name="role"]:checked') || {}).value || 'STUDENT';
+      const deptEl = document.getElementById('reg_department');
+      const deptId = deptEl ? deptEl.value : '';
+      const res  = await CampusX.api.register(email, password, first, last, role, deptId);
+      const data = res.data || res;
+      // Store email for OTP step; save verification token if provided
+      sessionStorage.setItem('cx_pending_email', email);
+      if (data.verification_token) sessionStorage.setItem('cx_verify_token', data.verification_token);
+      const instIdParam = data.institutional_id ? ('&institutional_id=' + encodeURIComponent(data.institutional_id)) : '';
+      window.location.replace('/verify-email?email=' + encodeURIComponent(email) + instIdParam);
+    } catch (err) {
+      if (err && (err.type === 'NETWORK_ERROR' || err.type === 'PARSE_ERROR')) {
+        form.submit();
+        return;
+      }
+      setLoading(false);
+      showBanner(CampusX.friendlyError(err));
+    }
+  });
+})();
+</script>
+{% endblock %}

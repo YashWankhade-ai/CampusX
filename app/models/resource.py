@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, ForeignKey, Text, Integer, BigInteger, Enum
 from app.models.base import BaseModel
@@ -24,8 +25,11 @@ class StudyMaterial(BaseModel):
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     material_type: Mapped[MaterialType] = mapped_column(Enum(MaterialType), default=MaterialType.NOTE, index=True)
     status: Mapped[str] = mapped_column(String(50), default="PENDING", index=True)
+    faculty_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    department_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     author: Mapped["User"] = relationship("User", back_populates="study_materials")
+    subject: Mapped[Optional["Subject"]] = relationship("Subject", foreign_keys=[subject_id])
     versions: Mapped[list["MaterialVersion"]] = relationship("MaterialVersion", back_populates="study_material", cascade="all, delete-orphan")
     comments: Mapped[list["ResourceComment"]] = relationship("ResourceComment", back_populates="study_material", cascade="all, delete-orphan")
     ratings: Mapped[list["ResourceRating"]] = relationship("ResourceRating", back_populates="study_material", cascade="all, delete-orphan")

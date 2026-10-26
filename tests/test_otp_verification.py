@@ -218,3 +218,28 @@ def test_sensitive_otp_not_written_to_logs(app, caplog):
 
     logged_text = caplog.text
     assert otp_code not in logged_text
+
+def test_resend_otp_creates_new_code(client, app):
+    with patch("app.tasks.email.send_otp_email.delay") as mock_email:
+        client.post("/api/v1/auth/register", json={
+            "email": "resendtest@campusx.edu",
+            "password": "Password123!"
+        })
+        first_otp = mock_email.call_args[0][1]
+
+        res = client.post("/api/v1/auth/resend-otp", json={
+            "email": "resendtest@campusx.edu"
+        })
+        assert res.status_code == 200
+        assert res.get_json()["success"] is True
+
+        second_otp = mock_email.call_args[0][1]
+        assert len(second_otp) == 6
+
+        # Second OTP can verify
+        ver_res = client.post("/api/v1/auth/verify-email", json={
+            "email": "resendtest@campusx.edu",
+            "otp_code": second_otp
+        })
+        assert ver_res.status_code == 200
+

@@ -1,0 +1,137 @@
+{% set active_page = "courses" %}
+{% extends "base.html" %}
+
+{% block title %}Course Detail — CampusX{% endblock %}
+{% block topbar_title %}Course{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="/student/courses">Courses</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Detail</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- Loading state -->
+  <div id="detail-loading">
+    <div style="margin-bottom:var(--cx-space-8);">
+      <div class="skeleton" style="height:28px;width:50%;margin-bottom:var(--cx-space-3);"></div>
+      <div class="skeleton skeleton-text wide"></div>
+      <div class="skeleton skeleton-text med"></div>
+    </div>
+    <div style="background:var(--cx-bg-surface);border:1px solid var(--cx-border-muted);border-radius:var(--cx-radius-md);padding:var(--cx-space-6);">
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-text wide"></div>
+      <div class="skeleton skeleton-text med"></div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="detail-content" style="display:none;">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:var(--cx-space-3);margin-bottom:var(--cx-space-3);">
+        <div style="width:48px;height:48px;background:rgba(36,72,58,0.10);border-radius:var(--cx-radius-md);display:flex;align-items:center;justify-content:center;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest)" stroke-width="1.75"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <span class="badge badge-success" id="detail-status" style="font-size:12px;"></span>
+      </div>
+      <h1 class="page-header-title" id="detail-title">Course</h1>
+      <p class="page-header-sub" id="detail-sub"></p>
+    </div>
+
+    <!-- Info panel -->
+    <div class="card" style="padding:var(--cx-space-6);margin-bottom:var(--cx-space-6);">
+      <h2 style="font-size:var(--cx-text-h4);font-weight:var(--cx-weight-semibold);margin-bottom:var(--cx-space-5);">Enrollment details</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-4);" id="detail-grid">
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:var(--cx-space-6);">
+      <a href="/student/resources" class="btn btn-secondary">Browse resources for this subject</a>
+    </div>
+  </div>
+
+  <!-- Error / not found -->
+  <div class="empty-state" id="detail-error" style="display:none;">
+    <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>
+    <div class="empty-state-title" id="detail-error-title">Course not found</div>
+    <p class="empty-state-body" id="detail-error-msg">This course is not available or you are not enrolled.</p>
+    <a href="/student/courses" class="btn btn-primary">Back to courses</a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (!CampusX.auth.isAuthenticated()) { window.location.replace('/login?next=' + window.location.pathname); return; }
+
+  const courseId = window.location.pathname.split('/').filter(Boolean).pop();
+  if (!courseId || courseId === 'courses') {
+    window.location.replace('/student/courses'); return;
+  }
+
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function infoRow(label, value) {
+    if (!value) return '';
+    return `<div class="profile-info-row"><div class="profile-info-label">${escHtml(label)}</div><div class="profile-info-value">${escHtml(String(value))}</div></div>`;
+  }
+
+  async function loadDetail() {
+    try {
+      // Fetch the student's course enrollments to find this course
+      const res = await fetch('/api/v1/student/enrollments/courses', {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() },
+      });
+      if (res.status === 401) { CampusX.auth.clearSession(); window.location.replace('/login?session=expired'); return; }
+      const json = await res.json();
+      const items = Array.isArray(json.data) ? json.data : [];
+
+      // Find matching enrollment
+      const enroll = items.find(e => e.course_id === courseId || e.id === courseId);
+
+      document.getElementById('detail-loading').style.display = 'none';
+
+      if (!enroll) {
+        // Not found (student is not enrolled here or course doesn't exist)
+        document.getElementById('detail-error').style.display = '';
+        return;
+      }
+
+      document.getElementById('detail-content').style.display = '';
+      document.getElementById('detail-title').textContent = 'Course ' + courseId.slice(0,8) + '…';
+      document.getElementById('detail-sub').textContent = 'Your enrollment details for this course';
+      const statusEl = document.getElementById('detail-status');
+      statusEl.textContent = enroll.status || 'enrolled';
+
+      const grid = document.getElementById('detail-grid');
+      grid.innerHTML = [
+        infoRow('Course ID', enroll.course_id),
+        infoRow('Enrollment ID', enroll.id),
+        infoRow('Semester ID', enroll.semester_id),
+        infoRow('Status', enroll.status),
+        infoRow('Grade', enroll.grade || 'Not yet graded'),
+        infoRow('Institution', enroll.institution_id),
+        infoRow('Enrolled on', enroll.created_at ? new Date(enroll.created_at).toLocaleDateString() : null),
+      ].filter(Boolean).join('');
+    } catch (err) {
+      document.getElementById('detail-loading').style.display = 'none';
+      document.getElementById('detail-error').style.display = '';
+      document.getElementById('detail-error-title').textContent = 'Could not load course';
+      document.getElementById('detail-error-msg').textContent = err.message || 'Network error.';
+    }
+  }
+
+  loadDetail();
+})();
+</script>
+{% endblock %}

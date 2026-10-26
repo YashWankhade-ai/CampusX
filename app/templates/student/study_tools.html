@@ -1,0 +1,1141 @@
+{% set active_page = "study_tools" %}
+{% extends "base.html" %}
+
+{% block title %}Study Tools — CampusX{% endblock %}
+{% block topbar_title %}Study Tools{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block head_extra %}
+{% endblock %}
+
+{% block content %}
+<div id="st-workspace" class="st-workspace">
+
+  <!-- ── Desktop sidebar ──────────────────────────────────── -->
+  <aside class="st-sidebar" aria-label="Study tools navigation">
+
+    <div class="st-tool-selector" role="tablist" aria-label="Choose a study tool">
+      <div class="st-tool-selector-label">Study Tools</div>
+
+      <button class="st-tool-btn" data-tool="quiz"
+              role="tab" aria-selected="true" id="st-tab-quiz"
+              aria-controls="st-quiz-panel">
+        <span class="st-tool-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </span>
+        <div>
+          <div class="st-tool-name">Quiz</div>
+          <div class="st-tool-desc">Test your understanding</div>
+        </div>
+      </button>
+
+      <button class="st-tool-btn" data-tool="flashcards"
+              role="tab" aria-selected="false" id="st-tab-flashcards"
+              aria-controls="st-flashcards-panel">
+        <span class="st-tool-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          </svg>
+        </span>
+        <div>
+          <div class="st-tool-name">Flashcards</div>
+          <div class="st-tool-desc">Review and memorise</div>
+        </div>
+      </button>
+
+      <button class="st-tool-btn" data-tool="summary"
+              role="tab" aria-selected="false" id="st-tab-summary"
+              aria-controls="st-summary-panel">
+        <span class="st-tool-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </span>
+        <div>
+          <div class="st-tool-name">Summary</div>
+          <div class="st-tool-desc">Understand key ideas</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Resource context chip (desktop) -->
+    <div class="st-resource-context" id="st-resource-context" hidden>
+      <div class="st-resource-context-label">Selected resource</div>
+      <div class="st-resource-context-title" id="st-context-title"></div>
+      <button class="st-change-resource" id="st-change-resource-sidebar">Change resource</button>
+    </div>
+
+  </aside>
+
+  <!-- ── Mobile tab bar ───────────────────────────────────── -->
+  <div class="st-mobile-tabs" role="tablist" aria-label="Choose a study tool">
+    <button class="st-mobile-tab" data-tool="quiz"
+            role="tab" aria-selected="true">Quiz</button>
+    <button class="st-mobile-tab" data-tool="flashcards"
+            role="tab" aria-selected="false">Flashcards</button>
+    <button class="st-mobile-tab" data-tool="summary"
+            role="tab" aria-selected="false">Summary</button>
+  </div>
+
+  <!-- ── Main area ────────────────────────────────────────── -->
+  <main class="st-main" id="st-main">
+
+    <!-- SETUP VIEW: resource picker + tool config -->
+    <section id="st-setup-view" class="st-setup-view" role="tabpanel" aria-labelledby="st-tab-quiz">
+
+      <!-- No resource selected -->
+      <div id="st-no-resource">
+        <h1 class="st-empty-heading">Study Tools</h1>
+        <p class="st-empty-sub">
+          Turn your academic resources into active study material.
+          Select a resource to begin.
+        </p>
+
+        <!-- Resource picker -->
+        <div class="st-picker" id="st-picker">
+          <div class="st-picker-header">
+            <label for="st-picker-search">Select a resource</label>
+          </div>
+          <div class="st-picker-search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--cx-text-muted)" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="st-picker-search" type="search" class="st-picker-search"
+                   placeholder="Search your resources…" autocomplete="off"
+                   aria-label="Search resources" aria-controls="st-picker-list">
+          </div>
+          <div id="st-picker-list" class="st-picker-list" role="list" aria-label="Resources"></div>
+          <div id="st-picker-loading" class="st-picker-loading" role="status" aria-live="polite">
+            Loading resources…
+          </div>
+          <div id="st-picker-empty" class="st-picker-empty" hidden>No matching resources found.</div>
+          <div id="st-picker-error" class="st-picker-error" hidden aria-live="assertive">
+            Could not load resources. Please try again.
+          </div>
+        </div>
+      </div>
+
+      <!-- Resource selected — show tool config -->
+      <div id="st-ready" hidden>
+
+        <!-- Mobile resource chip -->
+        <div class="st-resource-chip" id="st-resource-chip">
+          <span class="st-resource-chip-title" id="st-chip-title"></span>
+          <button class="st-chip-change" id="st-change-resource-mobile">Change</button>
+        </div>
+
+        <!-- Quiz config -->
+        <div id="st-quiz-config" class="st-tool-config">
+          <div class="st-config-label">Number of questions</div>
+          <div class="st-count-control">
+            <button class="st-count-btn" id="st-q-minus"
+                    aria-label="Fewer questions" aria-controls="st-q-count">−</button>
+            <span class="st-count-value" id="st-q-count" aria-live="polite"
+                  aria-label="5 questions">5</span>
+            <button class="st-count-btn" id="st-q-plus"
+                    aria-label="More questions" aria-controls="st-q-count">+</button>
+          </div>
+          <p class="st-config-note">1 to 15 questions. Server always clamps to this range.</p>
+        </div>
+
+        <!-- Flashcard config -->
+        <div id="st-fc-config" class="st-tool-config" hidden>
+          <div class="st-config-label">Number of cards</div>
+          <div class="st-count-control">
+            <button class="st-count-btn" id="st-c-minus"
+                    aria-label="Fewer cards" aria-controls="st-c-count">−</button>
+            <span class="st-count-value" id="st-c-count" aria-live="polite"
+                  aria-label="10 cards">10</span>
+            <button class="st-count-btn" id="st-c-plus"
+                    aria-label="More cards" aria-controls="st-c-count">+</button>
+          </div>
+          <p class="st-config-note">1 to 20 cards. Server always clamps to this range.</p>
+        </div>
+
+        <!-- Summary config -->
+        <div id="st-summary-config" class="st-tool-config" hidden>
+          <p class="st-config-note">
+            CampusX AI will generate a structured summary with key concepts,
+            a core summary, and essential takeaways — grounded in your resource.
+          </p>
+        </div>
+
+        <button class="btn btn-primary" id="st-generate-btn"
+                aria-label="Generate study material">Generate</button>
+
+      </div>
+    </section>
+
+    <!-- GENERATING VIEW -->
+    <section id="st-generating-view" class="st-generating-view" hidden aria-live="polite">
+      <div class="st-generating-inner">
+        <div class="st-dots" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="st-generating-text" id="st-generating-text">
+          Preparing your study material…
+        </div>
+        <div class="st-generating-sub">AI-generated from your resource</div>
+      </div>
+    </section>
+
+    <!-- RESULT VIEW -->
+    <section id="st-result-view" class="st-result-view" hidden aria-live="polite">
+
+      <div class="st-result-header">
+        <div>
+          <div class="st-result-tool-label" id="st-result-tool-label"></div>
+          <h2 class="st-result-resource-title" id="st-result-resource-title"></h2>
+          <div class="st-result-topic" id="st-result-topic" hidden></div>
+        </div>
+        <div class="st-result-actions">
+          <button class="btn btn-secondary" id="st-regenerate-btn">Regenerate</button>
+          <button class="btn-link" id="st-new-resource-btn">New resource</button>
+        </div>
+      </div>
+
+      <!-- Result body -->
+      <div class="st-result-body">
+
+        <div class="st-ai-label">AI-generated from this resource</div>
+
+        <!-- Quality indicator -->
+        <div class="st-quality" id="st-quality" hidden aria-label="AI quality indicators"></div>
+
+        <!-- Error in result -->
+        <div id="st-result-error" class="st-result-error" hidden role="alert"></div>
+
+        <!-- QUIZ RESULT (id matches ARIA pattern) -->
+        <div id="st-quiz-panel" role="tabpanel" aria-labelledby="st-tab-quiz" hidden>
+          <!-- Progress -->
+          <div class="st-quiz-progress" id="st-quiz-progress">
+            <div class="st-quiz-progress-bar" role="progressbar"
+                 aria-valuenow="1" aria-valuemin="1" aria-valuemax="5">
+              <div class="st-quiz-progress-fill" id="st-quiz-progress-fill"
+                   style="width:20%"></div>
+            </div>
+            <div class="st-quiz-progress-text" id="st-quiz-progress-text"
+                 aria-live="polite">Question 1 of 5</div>
+          </div>
+
+          <!-- Question + options -->
+          <div id="st-quiz-question-area">
+            <div class="st-quiz-q-text" id="st-quiz-q-text"
+                 aria-live="polite"></div>
+            <div class="st-quiz-options" id="st-quiz-options"
+                 role="group" aria-labelledby="st-quiz-q-text"></div>
+            <div class="st-quiz-explanation" id="st-quiz-explanation" hidden>
+              <div class="st-explanation-label">Explanation</div>
+              <div id="st-explanation-text"></div>
+            </div>
+          </div>
+
+          <!-- Nav -->
+          <div class="st-quiz-nav">
+            <button class="btn btn-secondary" id="st-quiz-prev" disabled>Previous</button>
+            <button class="btn btn-primary" id="st-quiz-next" disabled>Next question</button>
+          </div>
+        </div>
+
+        <!-- QUIZ SCORE screen -->
+        <div id="st-quiz-score" class="st-quiz-score" hidden>
+          <div class="st-score-ring" role="img" aria-labelledby="st-score-number">
+            <div class="st-score-number" id="st-score-number"></div>
+            <div class="st-score-denom" id="st-score-denom"></div>
+            <div class="st-score-label">Score</div>
+          </div>
+          <div class="st-score-breakdown" id="st-score-breakdown" aria-live="polite"></div>
+          <div class="st-score-actions">
+            <button class="btn btn-primary" id="st-quiz-retry-btn">Try again</button>
+            <button class="btn btn-secondary" id="st-quiz-review-btn">Review answers</button>
+          </div>
+        </div>
+
+        <!-- FLASHCARD RESULT -->
+        <div id="st-flashcards-panel" role="tabpanel" aria-labelledby="st-tab-flashcards" hidden>
+          <div class="st-fc-progress">
+            <div class="st-fc-progress-text" id="st-fc-progress-text"
+                 aria-live="polite">Card 1 of 10</div>
+            <div class="st-fc-progress-bar">
+              <div class="st-fc-progress-fill" id="st-fc-progress-fill" style="width:10%"></div>
+            </div>
+          </div>
+
+          <div class="st-flashcard" id="st-flashcard" role="button" tabindex="0"
+               aria-pressed="false"
+               aria-label="Flashcard. Press Space or Enter to reveal the answer.">
+            <!-- FRONT -->
+            <div id="st-fc-front-wrap">
+              <div class="st-fc-category" id="st-fc-category-front"></div>
+              <div class="st-fc-front-text" id="st-fc-front-text"></div>
+              <div class="st-fc-hint" aria-hidden="true">Click or press Space to reveal</div>
+            </div>
+            <!-- BACK (hidden until revealed) -->
+            <div id="st-fc-back-wrap" hidden>
+              <div class="st-fc-answer-label">Answer</div>
+              <div class="st-fc-back-text" id="st-fc-back-text"></div>
+            </div>
+          </div>
+
+          <div class="st-fc-nav">
+            <button class="btn btn-secondary" id="st-fc-prev">Previous</button>
+            <button class="btn btn-primary" id="st-fc-reveal" aria-pressed="false">Reveal</button>
+            <button class="btn btn-secondary" id="st-fc-next">Next</button>
+          </div>
+          <button class="st-fc-restart" id="st-fc-restart">Start over</button>
+        </div>
+
+        <!-- SUMMARY RESULT -->
+        <div id="st-summary-panel" role="tabpanel" aria-labelledby="st-tab-summary" hidden>
+          <div class="st-summary-body" id="st-summary-body"></div>
+          <div class="st-summary-actions">
+            <button class="btn btn-secondary" id="st-copy-btn"
+                    aria-label="Copy summary to clipboard">Copy</button>
+          </div>
+        </div>
+
+        <!-- SOURCES (shared across all tools) -->
+        <div class="st-sources" id="st-sources" hidden>
+          <button class="st-sources-toggle" id="st-sources-toggle"
+                  aria-expanded="false" aria-controls="st-sources-list">
+            Sources
+            <span class="st-sources-count" id="st-sources-count"></span>
+          </button>
+          <div class="st-sources-list" id="st-sources-list" hidden role="list"></div>
+        </div>
+
+      </div><!-- /.st-result-body -->
+    </section>
+
+  </main>
+</div><!-- /#st-workspace -->
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/study_tools.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Auth guard ──────────────────────────────────────────── */
+  if (window.CampusX && CampusX.auth && typeof CampusX.auth.isAuthenticated === 'function') {
+    if (!CampusX.auth.isAuthenticated() && !document.cookie.includes('access_token=')) {
+      window.location.replace('/login?next=/student/study-tools');
+      return;
+    }
+  }
+
+  /* ── Constants (read from API module — single source of truth) ── */
+  var MAX_Q  = (window.CampusX && CampusX.studyTools && CampusX.studyTools.MAX_QUIZ_QUESTIONS) || 15;
+  var MAX_FC = (window.CampusX && CampusX.studyTools && CampusX.studyTools.MAX_FLASHCARD_COUNT) || 20;
+  var DEFAULT_Q  = 5;
+  var DEFAULT_FC = 10;
+
+  /* ── State ───────────────────────────────────────────────── */
+  var selectedResource = null; // {id, title, type}
+  var activeTool = 'quiz';     // 'quiz' | 'flashcards' | 'summary'
+  var numQuestions = DEFAULT_Q;
+  var numCards = DEFAULT_FC;
+  var busy = false;
+
+  // Generated data
+  var quizData      = null;
+  var flashcardData = null;
+  var summaryData   = null;
+
+  // Quiz state
+  var quizState = null; // {currentIdx, answers:{idx:chosenIdx}, totalAnswered}
+  var reviewMode = false;
+
+  // Flashcard state
+  var fcIdx = 0;
+  var fcRevealed = false;
+
+  // Resource list cache (pre-populated by server for instant zero-lag rendering)
+  var preloaded = {{ (preloaded_resources or []) | tojson | safe }};
+  var allResources = (Array.isArray(preloaded) && preloaded.length > 0) ? preloaded : [];
+
+  /* ── DOM refs ────────────────────────────────────────────── */
+  var $ = function (id) { return document.getElementById(id); };
+
+  var dom = {
+    setupView:       $('st-setup-view'),
+    generatingView:  $('st-generating-view'),
+    resultView:      $('st-result-view'),
+    noResource:      $('st-no-resource'),
+    ready:           $('st-ready'),
+    generatingText:  $('st-generating-text'),
+
+    // Sidebar
+    resourceContext: $('st-resource-context'),
+    contextTitle:    $('st-context-title'),
+    changeSidebar:   $('st-change-resource-sidebar'),
+
+    // Picker
+    pickerList:    $('st-picker-list'),
+    pickerLoading: $('st-picker-loading'),
+    pickerEmpty:   $('st-picker-empty'),
+    pickerError:   $('st-picker-error'),
+    pickerSearch:  $('st-picker-search'),
+
+    // Resource chip (mobile)
+    resourceChip: $('st-resource-chip'),
+    chipTitle:    $('st-chip-title'),
+    chipChange:   $('st-change-resource-mobile'),
+
+    // Configs
+    quizConfig:    $('st-quiz-config'),
+    fcConfig:      $('st-fc-config'),
+    summaryConfig: $('st-summary-config'),
+
+    qCount:  $('st-q-count'),
+    qMinus:  $('st-q-minus'),
+    qPlus:   $('st-q-plus'),
+    cCount:  $('st-c-count'),
+    cMinus:  $('st-c-minus'),
+    cPlus:   $('st-c-plus'),
+
+    generateBtn: $('st-generate-btn'),
+
+    // Result header
+    resultToolLabel:    $('st-result-tool-label'),
+    resultResourceTitle:$('st-result-resource-title'),
+    resultTopic:        $('st-result-topic'),
+    regenerateBtn:      $('st-regenerate-btn'),
+    newResourceBtn:     $('st-new-resource-btn'),
+
+    // Quality + AI label
+    quality: $('st-quality'),
+    resultError: $('st-result-error'),
+
+    // Quiz panels
+    quizPanel:    $('st-quiz-panel'),
+    quizProgress: $('st-quiz-progress'),
+    quizProgressFill: $('st-quiz-progress-fill'),
+    quizProgressText: $('st-quiz-progress-text'),
+    quizQText:    $('st-quiz-q-text'),
+    quizOptions:  $('st-quiz-options'),
+    quizExpl:     $('st-quiz-explanation'),
+    explText:     $('st-explanation-text'),
+    quizPrev:     $('st-quiz-prev'),
+    quizNext:     $('st-quiz-next'),
+
+    // Quiz score
+    quizScore:       $('st-quiz-score'),
+    scoreNumber:     $('st-score-number'),
+    scoreDenom:      $('st-score-denom'),
+    scoreBreakdown:  $('st-score-breakdown'),
+    retryBtn:        $('st-quiz-retry-btn'),
+    reviewBtn:       $('st-quiz-review-btn'),
+
+    // Flashcard panel
+    fcPanel:        $('st-flashcards-panel'),
+    fcProgressText: $('st-fc-progress-text'),
+    fcProgressFill: $('st-fc-progress-fill'),
+    flashcard:      $('st-flashcard'),
+    fcFrontWrap:    $('st-fc-front-wrap'),
+    fcBackWrap:     $('st-fc-back-wrap'),
+    fcCategoryFront:$('st-fc-category-front'),
+    fcFrontText:    $('st-fc-front-text'),
+    fcBackText:     $('st-fc-back-text'),
+    fcPrev:         $('st-fc-prev'),
+    fcReveal:       $('st-fc-reveal'),
+    fcNext:         $('st-fc-next'),
+    fcRestart:      $('st-fc-restart'),
+
+    // Summary panel
+    summaryPanel: $('st-summary-panel'),
+    summaryBody:  $('st-summary-body'),
+    copyBtn:      $('st-copy-btn'),
+
+    // Sources
+    sources:        $('st-sources'),
+    sourcesToggle:  $('st-sources-toggle'),
+    sourcesCount:   $('st-sources-count'),
+    sourcesList:    $('st-sources-list'),
+  };
+
+  /* ── Utilities ───────────────────────────────────────────── */
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Safe lightweight markdown → HTML for summary output only.
+  // Handles: ### headings, ## headings, **bold**, - bullets, double newlines.
+  function renderMarkdown(text) {
+    if (!text) return '';
+    var lines = text.split('\n');
+    var html = '';
+    var inUl = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      // Headings
+      if (/^### /.test(line)) {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        html += '<h3>' + escHtml(line.slice(4)) + '</h3>';
+        continue;
+      }
+      if (/^## /.test(line)) {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        html += '<h2>' + escHtml(line.slice(3)) + '</h2>';
+        continue;
+      }
+      // Bullet points
+      if (/^[-*] /.test(line)) {
+        if (!inUl) { html += '<ul>'; inUl = true; }
+        var li = escHtml(line.slice(2));
+        li = li.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html += '<li>' + li + '</li>';
+        continue;
+      }
+      // Blank line
+      if (line.trim() === '') {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        continue;
+      }
+      // Normal paragraph line
+      if (inUl) { html += '</ul>'; inUl = false; }
+      var p = escHtml(line.trim());
+      p = p.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html += '<p>' + p + '</p>';
+    }
+    if (inUl) html += '</ul>';
+    return html;
+  }
+
+  /* ── View switching ──────────────────────────────────────── */
+  function showView(name) {
+    dom.setupView.hidden      = (name !== 'setup');
+    dom.generatingView.hidden = (name !== 'generating');
+    dom.resultView.hidden     = (name !== 'result');
+  }
+
+  /* ── Tool switching ──────────────────────────────────────── */
+  function setTool(tool) {
+    activeTool = tool;
+    // Update sidebar tabs
+    document.querySelectorAll('.st-tool-btn').forEach(function (btn) {
+      var sel = btn.dataset.tool === tool;
+      btn.setAttribute('aria-selected', String(sel));
+    });
+    // Update mobile tabs
+    document.querySelectorAll('.st-mobile-tab').forEach(function (btn) {
+      var sel = btn.dataset.tool === tool;
+      btn.setAttribute('aria-selected', String(sel));
+    });
+    // Update setup configs
+    dom.quizConfig.hidden    = (tool !== 'quiz');
+    dom.fcConfig.hidden      = (tool !== 'flashcards');
+    dom.summaryConfig.hidden = (tool !== 'summary');
+
+    // If there's a current result, switch to its panel
+    if (!dom.resultView.hidden) {
+      renderResultForTool(tool);
+    }
+  }
+
+  function renderResultForTool(tool) {
+    // Hide all result panels
+    dom.quizPanel.hidden      = true;
+    dom.quizScore.hidden      = true;
+    dom.fcPanel.hidden        = true;
+    dom.summaryPanel.hidden   = true;
+
+    if (tool === 'quiz' && quizData) {
+      dom.resultToolLabel.textContent = 'Quiz';
+      dom.resultResourceTitle.textContent = quizData.resource_title || '';
+      if (quizData.topic) {
+        dom.resultTopic.textContent = quizData.topic;
+        dom.resultTopic.hidden = false;
+      }
+      renderQuality(quizData.quality);
+      renderSources(quizData.sources);
+      if (reviewMode || (quizState && quizState.finished)) {
+        renderQuizScore();
+      } else {
+        renderQuizQuestion();
+      }
+    } else if (tool === 'flashcards' && flashcardData) {
+      dom.resultToolLabel.textContent = 'Flashcards';
+      dom.resultResourceTitle.textContent = flashcardData.resource_title || '';
+      dom.resultTopic.hidden = true;
+      renderQuality(flashcardData.quality);
+      renderSources(flashcardData.sources);
+      dom.fcPanel.hidden = false;
+      renderFlashcard();
+    } else if (tool === 'summary' && summaryData) {
+      dom.resultToolLabel.textContent = 'Summary';
+      dom.resultResourceTitle.textContent = summaryData.resource_title || '';
+      dom.resultTopic.hidden = true;
+      renderQuality(summaryData.quality);
+      renderSources(summaryData.sources);
+      dom.summaryPanel.hidden = false;
+      dom.summaryBody.innerHTML = renderMarkdown(summaryData.summary || '');
+    } else {
+      // No data for this tool yet — go back to setup
+      showView('setup');
+    }
+  }
+
+  /* ── Resource selection ──────────────────────────────────── */
+  function selectResource(res) {
+    selectedResource = res;
+    // Update desktop sidebar
+    dom.contextTitle.textContent = res.title;
+    dom.resourceContext.hidden = false;
+    // Update mobile chip
+    dom.chipTitle.textContent = res.title;
+    dom.resourceChip.style.display = 'flex';
+    // Switch setup view state
+    dom.noResource.hidden = true;
+    dom.ready.hidden = false;
+    // Announce for screen readers
+    dom.generateBtn.focus();
+  }
+
+  function clearResource() {
+    selectedResource = null;
+    dom.resourceContext.hidden = true;
+    dom.resourceChip.style.display = 'none';
+    dom.noResource.hidden = false;
+    dom.ready.hidden = true;
+    showView('setup');
+    // Reset all results
+    quizData = flashcardData = summaryData = null;
+    quizState = null; reviewMode = false;
+    fcIdx = 0; fcRevealed = false;
+  }
+
+  /* ── Resource picker ─────────────────────────────────────── */
+  function pickerShow(state, msg) {
+    // state: 'loading' | 'list' | 'empty' | 'error'
+    dom.pickerLoading.hidden = (state !== 'loading');
+    dom.pickerList.hidden    = (state !== 'list');
+    dom.pickerEmpty.hidden   = (state !== 'empty');
+    dom.pickerError.hidden   = (state !== 'error');
+    if (msg) {
+      if (state === 'error') dom.pickerError.textContent = msg;
+      if (state === 'empty') dom.pickerEmpty.textContent = msg;
+    }
+  }
+
+  function renderPickerItems(list) {
+    if (!list || list.length === 0) {
+      pickerShow('empty', 'No matching resources found.');
+      return;
+    }
+    dom.pickerList.innerHTML = '';
+    list.forEach(function (res) {
+      var btn = document.createElement('button');
+      btn.className = 'st-picker-item';
+      btn.setAttribute('role', 'listitem');
+      btn.setAttribute('type', 'button');
+
+      var typeLabel = res.material_type || res.type || 'Resource';
+      var subject   = res.subject_name  || '';
+      var dept      = res.department_name || '';
+      var faculty   = res.faculty_name || res.contributor_name || '';
+
+      var metaParts = [typeLabel];
+      if (subject) metaParts.push(subject);
+      if (dept) metaParts.push(dept);
+      if (faculty) metaParts.push('Faculty: ' + faculty);
+
+      btn.innerHTML =
+        '<div class="st-picker-item-icon" aria-hidden="true">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="st-picker-item-info">' +
+          '<div class="st-picker-item-title">' + escHtml(res.title) + '</div>' +
+          '<div class="st-picker-item-meta">' +
+            escHtml(metaParts.join(' · ')) +
+          '</div>' +
+        '</div>' +
+        '<span class="st-picker-item-cta" aria-hidden="true">Select →</span>';
+
+      btn.addEventListener('click', function () {
+        selectResource({ id: res.id, title: res.title, type: typeLabel });
+      });
+      dom.pickerList.appendChild(btn);
+    });
+    pickerShow('list');
+  }
+
+  async function loadResources() {
+    if (allResources.length > 0) {
+      renderPickerItems(allResources);
+    } else {
+      pickerShow('loading');
+    }
+    try {
+      var listFn = (window.CampusX && CampusX.studyTools && typeof CampusX.studyTools.listResources === 'function')
+        ? CampusX.studyTools.listResources
+        : async function () {
+            var tok = (window.CampusX && CampusX.auth && CampusX.auth.getAccessToken) ? CampusX.auth.getAccessToken() : null;
+            var headers = tok ? { 'Authorization': 'Bearer ' + tok } : {};
+            var res = await fetch('/api/v1/resources?limit=100&sort_by=created_at', { headers: headers, credentials: 'same-origin' });
+            return await res.json();
+          };
+
+      var json = await listFn();
+      var items = (json.data || []).filter(function (r) {
+        return r.status === 'APPROVED' || r.status === 'approved';
+      });
+      if (items.length > 0 || allResources.length === 0) {
+        allResources = items;
+        renderPickerItems(allResources);
+      }
+    } catch (err) {
+      if (allResources.length === 0) {
+        var msg = (window.CampusX && CampusX.studyTools && typeof CampusX.studyTools.friendlyError === 'function')
+          ? CampusX.studyTools.friendlyError(err)
+          : 'Could not load resources. Please try again.';
+        pickerShow('error', msg);
+      }
+    }
+  }
+
+  function filterResources(query) {
+    if (!query) { renderPickerItems(allResources); return; }
+    var q = query.toLowerCase();
+    var filtered = allResources.filter(function (r) {
+      return (r.title || '').toLowerCase().includes(q) ||
+             (r.subject_name || '').toLowerCase().includes(q) ||
+             (r.department_name || '').toLowerCase().includes(q) ||
+             (r.faculty_name || '').toLowerCase().includes(q) ||
+             (r.contributor_name || '').toLowerCase().includes(q);
+    });
+    renderPickerItems(filtered);
+  }
+
+  /* ── Count controls ──────────────────────────────────────── */
+  function updateQCount() {
+    dom.qCount.textContent = String(numQuestions);
+    dom.qCount.setAttribute('aria-label', numQuestions + ' questions');
+    dom.qMinus.disabled = (numQuestions <= 1);
+    dom.qPlus.disabled  = (numQuestions >= MAX_Q);
+  }
+  function updateCCount() {
+    dom.cCount.textContent = String(numCards);
+    dom.cCount.setAttribute('aria-label', numCards + ' cards');
+    dom.cMinus.disabled = (numCards <= 1);
+    dom.cPlus.disabled  = (numCards >= MAX_FC);
+  }
+
+  dom.qMinus.addEventListener('click', function () {
+    if (numQuestions > 1) { numQuestions--; updateQCount(); }
+  });
+  dom.qPlus.addEventListener('click', function () {
+    if (numQuestions < MAX_Q) { numQuestions++; updateQCount(); }
+  });
+  dom.cMinus.addEventListener('click', function () {
+    if (numCards > 1) { numCards--; updateCCount(); }
+  });
+  dom.cPlus.addEventListener('click', function () {
+    if (numCards < MAX_FC) { numCards++; updateCCount(); }
+  });
+
+  /* ── Generate ────────────────────────────────────────────── */
+  async function generate() {
+    if (busy || !selectedResource) return;
+    busy = true;
+    dom.generateBtn.disabled = true;
+    dom.regenerateBtn.disabled = true;
+
+    var toolLabels = { quiz: 'Generating quiz…', flashcards: 'Generating flashcards…', summary: 'Generating summary…' };
+    dom.generatingText.textContent = toolLabels[activeTool] || 'Preparing your study material…';
+    showView('generating');
+
+    try {
+      var json;
+      if (activeTool === 'quiz') {
+        json = await CampusX.studyTools.generateQuiz(selectedResource.id, numQuestions);
+        quizData = json.data || json;
+        quizState = { currentIdx: 0, answers: {}, finished: false };
+        reviewMode = false;
+      } else if (activeTool === 'flashcards') {
+        json = await CampusX.studyTools.generateFlashcards(selectedResource.id, numCards);
+        flashcardData = json.data || json;
+        fcIdx = 0; fcRevealed = false;
+      } else {
+        json = await CampusX.studyTools.generateSummary(selectedResource.id);
+        summaryData = json.data || json;
+      }
+
+      showView('result');
+      renderResultForTool(activeTool);
+
+    } catch (err) {
+      // Show error inline — stay in result view if already there, else go to setup
+      var msg = CampusX.studyTools.friendlyError(err);
+      if (err && err.type === 'UNAUTHORIZED') {
+        window.location.replace('/login?session=expired');
+        return;
+      }
+      // Show error in result view
+      showView('result');
+      // Clear previous content panels
+      dom.quizPanel.hidden = dom.quizScore.hidden = dom.fcPanel.hidden = dom.summaryPanel.hidden = true;
+      dom.quality.hidden = true;
+      dom.sources.hidden = true;
+      dom.resultToolLabel.textContent = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
+      dom.resultResourceTitle.textContent = selectedResource ? selectedResource.title : '';
+      dom.resultTopic.hidden = true;
+      dom.resultError.textContent = msg;
+      dom.resultError.hidden = false;
+
+    } finally {
+      busy = false;
+      dom.generateBtn.disabled = false;
+      dom.regenerateBtn.disabled = false;
+    }
+  }
+
+  /* ── Quality indicator ───────────────────────────────────── */
+  function renderQuality(quality) {
+    if (!quality) { dom.quality.hidden = true; return; }
+    var level   = quality.confidence_level;
+    var gstatus = quality.grounding_status;
+    if (!level && !gstatus) { dom.quality.hidden = true; return; }
+
+    var html = '<span class="st-quality-label">AI Quality</span>';
+
+    if (level) {
+      var cls = 'st-quality-' + escHtml(level.toLowerCase());
+      html += '<span class="st-quality-badge ' + cls + '">' +
+              'Confidence: ' + escHtml(level.charAt(0).toUpperCase() + level.slice(1)) +
+              '</span>';
+    }
+    if (gstatus) {
+      var gCls = gstatus === 'SUPPORTED'           ? 'st-quality-supported'
+               : gstatus === 'PARTIALLY_SUPPORTED' ? 'st-quality-partial'
+               : 'st-quality-unsupported';
+      var gLabel = gstatus === 'SUPPORTED'           ? 'Grounding: Supported'
+                 : gstatus === 'PARTIALLY_SUPPORTED' ? 'Grounding: Partial'
+                 : 'Grounding: Unsupported';
+      html += '<span class="st-quality-badge ' + gCls + '">' + escHtml(gLabel) + '</span>';
+    }
+    dom.quality.innerHTML = html;
+    dom.quality.hidden = false;
+  }
+
+  /* ── Sources ─────────────────────────────────────────────── */
+  function renderSources(sources) {
+    if (!sources || sources.length === 0) { dom.sources.hidden = true; return; }
+    dom.sourcesCount.textContent = '(' + sources.length + ')';
+    dom.sourcesList.innerHTML = '';
+    sources.forEach(function (s, i) {
+      var item = document.createElement('div');
+      item.className = 'st-source-item';
+      item.setAttribute('role', 'listitem');
+      var title = s.title ? escHtml(s.title) : ('Source ' + (i + 1));
+      var chunk = s.chunk_index != null ? ' — chunk ' + escHtml(String(s.chunk_index)) : '';
+      item.innerHTML = '<strong>' + title + '</strong>' + chunk;
+      dom.sourcesList.appendChild(item);
+    });
+    dom.sources.hidden = false;
+    dom.sourcesList.hidden = true;
+    dom.sourcesToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  dom.sourcesToggle.addEventListener('click', function () {
+    var expanded = dom.sourcesToggle.getAttribute('aria-expanded') === 'true';
+    dom.sourcesList.hidden = expanded;
+    dom.sourcesToggle.setAttribute('aria-expanded', String(!expanded));
+  });
+
+  /* ── Quiz rendering ──────────────────────────────────────── */
+  var OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+  function renderQuizQuestion() {
+    if (!quizData || !quizState) return;
+    var questions = quizData.questions || [];
+    var idx = quizState.currentIdx;
+    var total = questions.length;
+    var q = questions[idx];
+
+    dom.quizPanel.hidden = false;
+    dom.quizScore.hidden = true;
+
+    // Progress
+    var pct = Math.round(((idx + 1) / total) * 100);
+    dom.quizProgressFill.style.width = pct + '%';
+    dom.quizProgressFill.parentElement.setAttribute('aria-valuenow', idx + 1);
+    dom.quizProgressFill.parentElement.setAttribute('aria-valuemax', total);
+    dom.quizProgressText.textContent = 'Question ' + (idx + 1) + ' of ' + total;
+
+    // Question text
+    dom.quizQText.textContent = (q.question_number ? q.question_number + '. ' : '') + q.question;
+
+    // Options
+    var answered = quizState.answers.hasOwnProperty(idx);
+    var chosen   = quizState.answers[idx];
+    dom.quizOptions.innerHTML = '';
+    q.options.forEach(function (opt, oi) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'st-quiz-option';
+      if (answered) {
+        btn.disabled = !reviewMode;
+        if (oi === q.correct_answer_index) {
+          btn.classList.add(oi === chosen ? 'correct' : 'correct-unselected');
+        } else if (oi === chosen) {
+          btn.classList.add('incorrect');
+        }
+      }
+      btn.innerHTML =
+        '<span class="st-option-letter" aria-hidden="true">' + escHtml(OPTION_LETTERS[oi] || String(oi + 1)) + '</span>' +
+        escHtml(opt);
+      btn.setAttribute('aria-label', 'Option ' + (OPTION_LETTERS[oi] || (oi + 1)) + ': ' + opt);
+      btn.addEventListener('click', function () {
+        if (quizState.answers.hasOwnProperty(idx)) return;
+        quizState.answers[idx] = oi;
+        renderQuizQuestion();
+      });
+      dom.quizOptions.appendChild(btn);
+    });
+
+    // Explanation (shown after answering)
+    if (answered && q.explanation) {
+      dom.explText.textContent = q.explanation;
+      dom.quizExpl.hidden = false;
+    } else {
+      dom.quizExpl.hidden = true;
+    }
+
+    // Navigation
+    dom.quizPrev.disabled = (idx === 0);
+    if (idx === total - 1 && answered) {
+      dom.quizNext.textContent = 'See results';
+      dom.quizNext.disabled = false;
+    } else if (answered) {
+      dom.quizNext.textContent = 'Next question';
+      dom.quizNext.disabled = false;
+    } else {
+      dom.quizNext.textContent = 'Next question';
+      dom.quizNext.disabled = true; // must answer first
+    }
+  }
+
+  function renderQuizScore() {
+    var questions = quizData.questions || [];
+    var total = questions.length;
+    var correct = 0;
+    questions.forEach(function (q, i) {
+      if (quizState.answers.hasOwnProperty(i) && quizState.answers[i] === q.correct_answer_index) {
+        correct++;
+      }
+    });
+    var wrong = Object.keys(quizState.answers).length - correct;
+
+    dom.quizPanel.hidden = true;
+    dom.quizScore.hidden = false;
+
+    dom.scoreNumber.textContent = String(correct);
+    dom.scoreDenom.textContent = '/ ' + total;
+    dom.scoreNumber.setAttribute('aria-label', correct + ' out of ' + total + ' correct');
+
+    var pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    dom.scoreBreakdown.innerHTML =
+      '<strong>' + pct + '%</strong> — ' +
+      correct + ' correct, ' + wrong + ' incorrect out of ' + total + ' questions';
+  }
+
+  dom.quizPrev.addEventListener('click', function () {
+    if (!quizState) return;
+    if (quizState.currentIdx > 0) {
+      quizState.currentIdx--;
+      renderQuizQuestion();
+    }
+  });
+  dom.quizNext.addEventListener('click', function () {
+    if (!quizState || !quizData) return;
+    var questions = quizData.questions || [];
+    var idx = quizState.currentIdx;
+    if (!quizState.answers.hasOwnProperty(idx)) return;
+    if (idx === questions.length - 1) {
+      quizState.finished = true;
+      renderQuizScore();
+    } else {
+      quizState.currentIdx++;
+      renderQuizQuestion();
+    }
+  });
+  dom.retryBtn.addEventListener('click', function () {
+    quizState = { currentIdx: 0, answers: {}, finished: false };
+    reviewMode = false;
+    dom.quizScore.hidden = true;
+    renderQuizQuestion();
+  });
+  dom.reviewBtn.addEventListener('click', function () {
+    reviewMode = true;
+    quizState.currentIdx = 0;
+    dom.quizScore.hidden = true;
+    renderQuizQuestion();
+  });
+
+  /* ── Flashcard rendering ─────────────────────────────────── */
+  function renderFlashcard() {
+    if (!flashcardData) return;
+    var cards = flashcardData.flashcards || [];
+    if (cards.length === 0) return;
+    var card = cards[fcIdx];
+    var total = cards.length;
+
+    // Progress
+    var pct = Math.round(((fcIdx + 1) / total) * 100);
+    dom.fcProgressFill.style.width = pct + '%';
+    dom.fcProgressText.textContent = 'Card ' + (fcIdx + 1) + ' of ' + total;
+
+    // Front content
+    dom.fcCategoryFront.textContent = card.category || '';
+    dom.fcFrontText.textContent = card.front;
+    dom.fcBackText.textContent  = card.back;
+
+    // Reset to front
+    fcRevealed = false;
+    dom.fcFrontWrap.hidden = false;
+    dom.fcBackWrap.hidden  = true;
+    dom.flashcard.classList.remove('is-revealed');
+    dom.flashcard.setAttribute('aria-pressed', 'false');
+    dom.flashcard.setAttribute('aria-label',
+      'Flashcard: ' + card.front + '. Press Space or Enter to reveal the answer.');
+    dom.fcReveal.textContent = 'Reveal';
+    dom.fcReveal.setAttribute('aria-pressed', 'false');
+
+    // Navigation
+    dom.fcPrev.disabled = (fcIdx === 0);
+    dom.fcNext.disabled = (fcIdx === total - 1);
+  }
+
+  function revealFlashcard() {
+    if (!flashcardData) return;
+    var cards = flashcardData.flashcards || [];
+    var card = cards[fcIdx];
+    if (!card) return;
+    fcRevealed = !fcRevealed;
+    dom.fcFrontWrap.hidden = fcRevealed;
+    dom.fcBackWrap.hidden  = !fcRevealed;
+    dom.flashcard.classList.toggle('is-revealed', fcRevealed);
+    dom.flashcard.setAttribute('aria-pressed', String(fcRevealed));
+    dom.fcReveal.textContent = fcRevealed ? 'Hide' : 'Reveal';
+    dom.fcReveal.setAttribute('aria-pressed', String(fcRevealed));
+    if (fcRevealed) {
+      dom.flashcard.setAttribute('aria-label', 'Answer: ' + card.back);
+    } else {
+      dom.flashcard.setAttribute('aria-label',
+        'Flashcard: ' + card.front + '. Press Space or Enter to reveal the answer.');
+    }
+  }
+
+  dom.flashcard.addEventListener('click', revealFlashcard);
+  dom.flashcard.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); revealFlashcard(); }
+  });
+  dom.fcReveal.addEventListener('click', function (e) { e.stopPropagation(); revealFlashcard(); });
+  dom.fcPrev.addEventListener('click', function () {
+    if (fcIdx > 0) { fcIdx--; renderFlashcard(); }
+  });
+  dom.fcNext.addEventListener('click', function () {
+    if (!flashcardData) return;
+    if (fcIdx < (flashcardData.flashcards || []).length - 1) { fcIdx++; renderFlashcard(); }
+  });
+  dom.fcRestart.addEventListener('click', function () {
+    fcIdx = 0; renderFlashcard();
+  });
+
+  /* ── Summary copy ────────────────────────────────────────── */
+  dom.copyBtn.addEventListener('click', function () {
+    if (!summaryData || !summaryData.summary) return;
+    navigator.clipboard.writeText(summaryData.summary).then(function () {
+      dom.copyBtn.textContent = 'Copied!';
+      setTimeout(function () { dom.copyBtn.textContent = 'Copy'; }, 2000);
+    }).catch(function () {
+      dom.copyBtn.textContent = 'Could not copy';
+      setTimeout(function () { dom.copyBtn.textContent = 'Copy'; }, 2000);
+    });
+  });
+
+  /* ── Regenerate / New resource ───────────────────────────── */
+  dom.regenerateBtn.addEventListener('click', function () {
+    if (busy) return;
+    generate();
+  });
+  dom.newResourceBtn.addEventListener('click', function () {
+    clearResource();
+    allResources = []; // re-fetch on next open
+    loadResources();
+  });
+  dom.changeSidebar.addEventListener('click', function () {
+    clearResource();
+    allResources = [];
+    loadResources();
+  });
+  dom.chipChange.addEventListener('click', function () {
+    clearResource();
+    allResources = [];
+    loadResources();
+  });
+
+  /* ── Generate button ─────────────────────────────────────── */
+  dom.generateBtn.addEventListener('click', function () {
+    if (!selectedResource) return;
+    generate();
+  });
+
+  /* ── Tool / mode buttons ─────────────────────────────────── */
+  document.querySelectorAll('.st-tool-btn, .st-mobile-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setTool(btn.dataset.tool);
+    });
+  });
+
+  /* ── Picker search ───────────────────────────────────────── */
+  dom.pickerSearch.addEventListener('input', function () {
+    filterResources(dom.pickerSearch.value.trim());
+  });
+
+  /* ── Keyboard nav for quiz options ───────────────────────── */
+  dom.quizOptions.addEventListener('keydown', function (e) {
+    var btns = Array.from(dom.quizOptions.querySelectorAll('.st-quiz-option'));
+    var cur = document.activeElement;
+    var idx = btns.indexOf(cur);
+    if (e.key === 'ArrowDown' && idx < btns.length - 1) { e.preventDefault(); btns[idx + 1].focus(); }
+    if (e.key === 'ArrowUp'   && idx > 0)               { e.preventDefault(); btns[idx - 1].focus(); }
+  });
+
+  /* ── Init ────────────────────────────────────────────────── */
+  updateQCount();
+  updateCCount();
+  setTool('quiz');
+  showView('setup');
+  if (allResources.length > 0) {
+    renderPickerItems(allResources);
+  }
+  loadResources();
+
+})();
+</script>
+{% endblock %}

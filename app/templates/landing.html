@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CampusX — AI-powered academic resource platform. Discover notes, papers, and study material. Ask questions. Learn faster.">
+  <title>CampusX — Learn Smarter. Search Faster. Powered by AI.</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <style>
+
+    /* ── Landing-specific styles ─────────────────────────────── */
+    body { background: var(--cx-bg-page); }
+
+    /* Navbar */
+    .landing-nav {
+      position: sticky;
+      top: 0;
+      z-index: var(--cx-z-topbar);
+      background: rgba(255, 253, 248, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--cx-border-muted);
+      padding: 0 var(--cx-space-6);
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: var(--cx-space-8);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--cx-space-1);
+      flex: 1;
+    }
+    .nav-links a {
+      font-size: var(--cx-text-nav);
+      font-weight: var(--cx-weight-medium);
+      color: var(--cx-text-secondary);
+      text-decoration: none;
+      padding: var(--cx-space-2) var(--cx-space-3);
+      border-radius: var(--cx-radius-sm);
+      transition: color var(--cx-transition), background-color var(--cx-transition);
+    }
+    .nav-links a:hover { color: var(--cx-text-primary); background: var(--cx-bg-muted); }
+    .nav-actions { display: flex; align-items: center; gap: var(--cx-space-3); }
+    .mobile-menu-btn { display: none; }
+
+    /* Hero */
+    .hero {
+      padding: var(--cx-space-20) var(--cx-space-6) var(--cx-space-16);
+      max-width: 960px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--cx-space-2);
+      padding: var(--cx-space-1) var(--cx-space-3);
+      background: rgba(36, 72, 58, 0.08);
+      border: 1px solid rgba(36, 72, 58, 0.16);
+      border-radius: var(--cx-radius-pill);
+      font-size: var(--cx-text-caption);
+      font-weight: var(--cx-weight-semibold);
+      color: var(--cx-color-forest);
+      letter-spacing: var(--cx-tracking-wide);
+      text-transform: uppercase;
+      margin-bottom: var(--cx-space-6);
+    }
+    .hero-eyebrow-dot {
+      width: 6px; height: 6px;
+      background: var(--cx-color-forest);
+      border-radius: 50%;
+    }
+    .hero-headline {
+      font-family: var(--cx-font-serif);
+      font-size: clamp(2.25rem, 5vw, 3.5rem);
+      font-weight: 600;
+      color: var(--cx-text-primary);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin-bottom: var(--cx-space-6);
+    }
+    .hero-headline em {
+      font-style: normal;
+      color: var(--cx-color-terracotta);
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.125rem);
+      color: var(--cx-text-secondary);
+      line-height: var(--cx-leading-relaxed);
+      max-width: 600px;
+      margin: 0 auto var(--cx-space-8);
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--cx-space-4);
+      flex-wrap: wrap;
+    }
+    .hero-note {
+      margin-top: var(--cx-space-6);
+      font-size: var(--cx-text-caption);
+      color: var(--cx-text-muted);
+    }
+
+    /* Section scaffold */
+    .section {
+      padding: var(--cx-space-16) var(--cx-space-6);
+    }
+    .section-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .section-eyebrow {
+      font-size: var(--cx-text-caption);
+      font-weight: var(--cx-weight-semibold);
+      letter-spacing: var(--cx-tracking-wider);
+      text-transform: uppercase;
+      color: var(--cx-color-terracotta);
+      margin-bottom: var(--cx-space-3);
+    }
+    .section-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: var(--cx-weight-bold);
+      color: var(--cx-text-primary);
+      line-height: var(--cx-leading-tight);
+      margin-bottom: var(--cx-space-4);
+    }
+    .section-body {
+      font-size: var(--cx-text-body);
+      color: var(--cx-text-secondary);
+      line-height: var(--cx-leading-relaxed);
+      max-width: 520px;
+    }
+
+    /* Features grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--cx-space-5);
+      margin-top: var(--cx-space-10);
+    }
+    .feature-card {
+      background: var(--cx-bg-surface);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: var(--cx-radius-md);
+      padding: var(--cx-space-6);
+    }
+    .feature-icon {
+      width: 40px; height: 40px;
+      border-radius: var(--cx-radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: var(--cx-space-4);
+      flex-shrink: 0;
+    }
+    .feature-icon-forest     { background: rgba(36,72,58,0.10); color: var(--cx-color-forest); }
+    .feature-icon-terracotta { background: rgba(184,92,56,0.10); color: var(--cx-color-terracotta); }
+    .feature-icon-ochre      { background: var(--cx-color-ochre-pale); color: #7a5a10; }
+    .feature-icon-moss       { background: rgba(97,116,90,0.10); color: var(--cx-color-moss); }
+    .feature-title {
+      font-size: var(--cx-text-h4);
+      font-weight: var(--cx-weight-semibold);
+      color: var(--cx-text-primary);
+      margin-bottom: var(--cx-space-2);
+    }
+    .feature-body {
+      font-size: var(--cx-text-body-sm);
+      color: var(--cx-text-secondary);
+      line-height: var(--cx-leading-relaxed);
+    }
+
+    /* How it works */
+    .steps-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--cx-space-6);
+      margin-top: var(--cx-space-10);
+      position: relative;
+    }
+    .step {
+      text-align: center;
+      padding: var(--cx-space-5);
+    }
+    .step-number {
+      width: 40px; height: 40px;
+      border: 2px solid var(--cx-color-forest);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto var(--cx-space-4);
+      font-size: var(--cx-text-body-sm);
+      font-weight: var(--cx-weight-bold);
+      color: var(--cx-color-forest);
+    }
+    .step-title {
+      font-size: var(--cx-text-h4);
+      font-weight: var(--cx-weight-semibold);
+      color: var(--cx-text-primary);
+      margin-bottom: var(--cx-space-2);
+    }
+    .step-body {
+      font-size: var(--cx-text-body-sm);
+      color: var(--cx-text-muted);
+      line-height: var(--cx-leading-relaxed);
+    }
+
+    /* AI demo */
+    .ai-demo {
+      background: var(--cx-bg-surface);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: var(--cx-radius-lg);
+      overflow: hidden;
+      margin-top: var(--cx-space-10);
+    }
+    .ai-demo-topbar {
+      background: var(--cx-color-forest);
+      padding: var(--cx-space-3) var(--cx-space-5);
+      display: flex;
+      align-items: center;
+      gap: var(--cx-space-3);
+    }
+    .ai-demo-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3); }
+    .ai-demo-title { font-size: var(--cx-text-caption); color: rgba(255,255,255,0.8); font-weight: var(--cx-weight-medium); }
+    .ai-demo-body { padding: var(--cx-space-6); display: flex; flex-direction: column; gap: var(--cx-space-5); }
+    .demo-question {
+      background: var(--cx-color-forest);
+      color: var(--cx-color-paper);
+      padding: var(--cx-space-4) var(--cx-space-5);
+      border-radius: var(--cx-radius-md);
+      font-size: var(--cx-text-body-sm);
+      align-self: flex-end;
+      max-width: 72%;
+    }
+    .demo-answer {
+      background: var(--cx-bg-muted);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: var(--cx-radius-md);
+      padding: var(--cx-space-5);
+      max-width: 88%;
+    }
+    .demo-answer-header {
+      display: flex; align-items: center; gap: var(--cx-space-2);
+      font-size: var(--cx-text-caption); font-weight: var(--cx-weight-semibold);
+      color: var(--cx-color-forest); margin-bottom: var(--cx-space-3);
+    }
+    .demo-answer-body {
+      font-size: var(--cx-text-body-sm);
+      color: var(--cx-text-primary);
+      line-height: var(--cx-leading-relaxed);
+    }
+    .demo-confidence {
+      display: flex; align-items: center; gap: var(--cx-space-2);
+      margin-top: var(--cx-space-4); font-size: var(--cx-text-caption); color: var(--cx-text-muted);
+    }
+    .demo-confidence-track {
+      height: 4px; width: 72px;
+      background: var(--cx-border-muted);
+      border-radius: var(--cx-radius-pill); overflow: hidden;
+    }
+    .demo-confidence-fill { height: 100%; background: var(--cx-color-moss); border-radius: var(--cx-radius-pill); }
+    .demo-citation {
+      margin-top: var(--cx-space-3);
+      background: var(--cx-bg-highlight);
+      border-left: 3px solid var(--cx-color-ochre);
+      border-radius: var(--cx-radius-sm);
+      padding: var(--cx-space-3) var(--cx-space-4);
+      font-size: var(--cx-text-caption);
+    }
+    .demo-citation-title { font-weight: var(--cx-weight-semibold); color: var(--cx-text-primary); }
+    .demo-citation-body  { color: var(--cx-text-muted); margin-top: 2px; font-style: italic; }
+
+    /* Resource categories */
+    .resource-cats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--cx-space-4);
+      margin-top: var(--cx-space-10);
+    }
+    .resource-cat {
+      background: var(--cx-bg-surface);
+      border: 1px solid var(--cx-border-muted);
+      border-radius: var(--cx-radius-md);
+      padding: var(--cx-space-5);
+      display: flex; flex-direction: column; gap: var(--cx-space-3);
+      transition: border-color var(--cx-transition);
+    }
+    .resource-cat:hover { border-color: var(--cx-border-strong); }
+    .resource-cat-icon {
+      width: 36px; height: 36px;
+      border-radius: var(--cx-radius-sm);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .resource-cat-name  { font-size: var(--cx-text-body-sm); font-weight: var(--cx-weight-semibold); color: var(--cx-text-primary); }
+    .resource-cat-count { font-size: var(--cx-text-caption); color: var(--cx-text-muted); }
+
+    /* Benefits list */
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--cx-space-5);
+      margin-top: var(--cx-space-8);
+    }
+    .benefit-item {
+      display: flex; gap: var(--cx-space-4); align-items: flex-start;
+    }
+    .benefit-check {
+      width: 28px; height: 28px; flex-shrink: 0;
+      background: rgba(36,72,58,0.10);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .benefit-title { font-size: var(--cx-text-body); font-weight: var(--cx-weight-semibold); color: var(--cx-text-primary); margin-bottom: 2px; }
+    .benefit-body  { font-size: var(--cx-text-body-sm); color: var(--cx-text-muted); line-height: var(--cx-leading-relaxed); }
+
+    /* CTA section */
+    .cta-section {
+      background: var(--cx-color-forest);
+      padding: var(--cx-space-16) var(--cx-space-6);
+      text-align: center;
+    }
+    .cta-headline {
+      font-family: var(--cx-font-serif);
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 600;
+      color: var(--cx-color-paper);
+      margin-bottom: var(--cx-space-4);
+      line-height: var(--cx-leading-snug);
+    }
+    .cta-sub { font-size: var(--cx-text-body); color: rgba(255,253,248,0.75); margin-bottom: var(--cx-space-8); }
+    .cta-actions { display: flex; justify-content: center; gap: var(--cx-space-4); flex-wrap: wrap; }
+    .btn-cta-white {
+      background: var(--cx-color-paper);
+      color: var(--cx-color-forest);
+      border: 1px solid var(--cx-color-paper);
+      font-weight: var(--cx-weight-semibold);
+    }
+    .btn-cta-white:hover { background: var(--cx-color-ivory); text-decoration: none; color: var(--cx-color-forest); }
+    .btn-cta-outline {
+      background: transparent;
+      color: var(--cx-color-paper);
+      border: 1px solid rgba(255,253,248,0.40);
+    }
+    .btn-cta-outline:hover { background: rgba(255,253,248,0.10); text-decoration: none; color: var(--cx-color-paper); }
+
+    /* Footer */
+    .landing-footer {
+      background: var(--cx-color-ink);
+      padding: var(--cx-space-10) var(--cx-space-6);
+    }
+    .footer-inner {
+      max-width: 1080px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: var(--cx-space-8); flex-wrap: wrap;
+    }
+    .footer-brand { display: flex; flex-direction: column; gap: var(--cx-space-2); }
+    .footer-brand-name {
+      font-size: 1.125rem; font-weight: var(--cx-weight-bold);
+      color: var(--cx-color-paper); letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: var(--cx-space-2);
+    }
+    .footer-brand-dot { width: 6px; height: 6px; background: var(--cx-color-terracotta); border-radius: 50%; }
+    .footer-tagline { font-size: var(--cx-text-caption); color: rgba(255,253,248,0.45); }
+    .footer-links {
+      display: flex; gap: var(--cx-space-8); flex-wrap: wrap;
+    }
+    .footer-col { display: flex; flex-direction: column; gap: var(--cx-space-3); }
+    .footer-col-label { font-size: var(--cx-text-caption); font-weight: var(--cx-weight-semibold); color: rgba(255,253,248,0.55); letter-spacing: var(--cx-tracking-wide); text-transform: uppercase; }
+    .footer-col a { font-size: var(--cx-text-body-sm); color: rgba(255,253,248,0.70); text-decoration: none; }
+    .footer-col a:hover { color: var(--cx-color-paper); }
+    .footer-bottom {
+      max-width: 1080px; margin: var(--cx-space-8) auto 0;
+      padding-top: var(--cx-space-5);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      font-size: var(--cx-text-caption);
+      color: rgba(255,253,248,0.35);
+    }
+
+    /* Mobile nav */
+    .mobile-nav {
+      display: none;
+      position: fixed; inset: 0;
+      background: var(--cx-bg-page);
+      z-index: 999;
+      flex-direction: column;
+      padding: var(--cx-space-5);
+    }
+    .mobile-nav.open { display: flex; }
+    .mobile-nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--cx-space-8); }
+    .mobile-nav-links { display: flex; flex-direction: column; gap: var(--cx-space-2); }
+    .mobile-nav-links a { font-size: var(--cx-text-h4); font-weight: var(--cx-weight-medium); color: var(--cx-text-primary); text-decoration: none; padding: var(--cx-space-3) 0; border-bottom: 1px solid var(--cx-border-muted); }
+    .mobile-nav-links a:hover { color: var(--cx-color-forest); }
+    .mobile-nav-actions { display: flex; flex-direction: column; gap: var(--cx-space-3); margin-top: var(--cx-space-6); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links, .nav-actions { display: none; }
+      .mobile-menu-btn { display: flex; }
+      .hero { padding: var(--cx-space-12) var(--cx-space-4) var(--cx-space-10); }
+      .steps-row { grid-template-columns: 1fr 1fr; }
+      .resource-cats { grid-template-columns: 1fr 1fr; }
+      .benefits-grid { grid-template-columns: 1fr; }
+      .landing-nav { padding: 0 var(--cx-space-4); }
+    }
+    @media (max-width: 480px) {
+      .steps-row { grid-template-columns: 1fr; }
+      .resource-cats { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Mobile nav drawer -->
+<nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation" role="dialog" aria-modal="true">
+  <div class="mobile-nav-header">
+    <span style="font-weight:700;font-size:1.125rem;color:var(--cx-color-forest);">
+      <span style="display:inline-block;width:6px;height:6px;background:var(--cx-color-terracotta);border-radius:50%;margin-right:6px;vertical-align:middle;"></span>
+      CampusX
+    </span>
+    <button class="btn btn-ghost btn-icon" id="mobile-close" aria-label="Close menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="mobile-nav-links">
+    <a href="#features">Features</a>
+    <a href="#ai-section">AI Learning</a>
+    <a href="#resources">Resources</a>
+    <a href="#institutions">For Institutions</a>
+  </div>
+  <div class="mobile-nav-actions">
+    <a href="/login"    class="btn btn-secondary" style="justify-content:center;">Log in</a>
+    <a href="/register" class="btn btn-primary"   style="justify-content:center;">Get Started</a>
+  </div>
+</nav>
+
+<!-- Navbar -->
+<header>
+  <nav class="landing-nav" aria-label="Main navigation">
+    <a href="/" class="cx-wordmark cx-wordmark-dark" aria-label="CampusX home">
+      <span class="cx-wordmark-dot" style="background:var(--cx-color-terracotta);" aria-hidden="true"></span>
+      CampusX
+    </a>
+
+    <div class="nav-links" role="list">
+      <a href="#features"     role="listitem">Features</a>
+      <a href="#ai-section"   role="listitem">AI Learning</a>
+      <a href="#resources"    role="listitem">Resources</a>
+      <a href="#institutions" role="listitem">For Institutions</a>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/login"    class="btn btn-ghost btn-sm">Log in</a>
+      <a href="/register" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+
+    <button class="btn btn-ghost btn-icon mobile-menu-btn" id="mobile-open" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  </nav>
+</header>
+
+<!-- ── HERO ───────────────────────────────────────────────────── -->
+<section class="hero" aria-labelledby="hero-headline">
+  <div class="hero-eyebrow" aria-hidden="true">
+    <span class="hero-eyebrow-dot"></span>
+    AI-Powered Academic Platform
+  </div>
+  <h1 class="hero-headline" id="hero-headline">
+    Your academic resources,<br>
+    <em>understood by AI.</em>
+  </h1>
+  <p class="hero-sub">
+    CampusX helps students discover course materials, ask questions about their study content,
+    and use AI tools built on their institution's approved resources — not the open internet.
+  </p>
+  <div class="hero-actions">
+    <a href="/register" class="btn btn-primary btn-lg">Get Started</a>
+    <a href="#features" class="btn btn-secondary btn-lg">Explore CampusX</a>
+  </div>
+  <p class="hero-note">Free to get started · Institution-grade security · No AI hallucinations on your coursework</p>
+</section>
+
+<!-- Divider -->
+<div style="height:1px;background:var(--cx-border-muted);max-width:1080px;margin:0 auto;"></div>
+
+<!-- ── FEATURES ───────────────────────────────────────────────── -->
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="section-inner">
+    <p class="section-eyebrow">Platform capabilities</p>
+    <h2 class="section-title" id="features-title">Everything students and faculty need</h2>
+    <p class="section-body">CampusX connects academic resources, intelligent search, and AI study tools in a single platform — all scoped to your institution.</p>
+
+    <div class="features-grid">
+      {% for icon_path, icon_class, title, body in [
+        ('M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6', 'feature-icon-forest', 'Academic Resources', 'Browse, search, and access approved course notes, question papers, reference material, and lecture recordings organized by subject.'),
+        ('M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z', 'feature-icon-terracotta', 'Intelligent Search', 'Find exactly what you need using semantic search that understands the meaning of your query — not just keywords.'),
+        ('M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z', 'feature-icon-ochre', 'CampusX AI', 'Ask questions about your coursework and receive grounded answers with source citations — backed by your institution''s approved materials.'),
+        ('M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0120 9.414V19a2 2 0 01-2 2z', 'feature-icon-moss', 'PDF Chat', 'Upload a document or select a course material and have a conversation with it. CampusX AI answers from that specific resource.'),
+        ('M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.586V19a2 2 0 01-2 2H8a2 2 0 01-2-2v0', 'feature-icon-forest', 'Multi-PDF Chat', 'Cross-reference multiple documents in a single conversation. Ask questions that span lecture notes, textbooks, and past papers simultaneously.'),
+        ('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', 'feature-icon-terracotta', 'AI Study Tools', 'Generate quizzes, flashcards, and structured summaries from any approved course material — in seconds.'),
+        ('M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', 'feature-icon-ochre', 'Faculty Resources', 'Faculty can upload course materials, manage submissions, and track resource usage — directly contributing to their students'' learning experience.'),
+        ('M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', 'feature-icon-moss', 'Institution Management', 'Institutions maintain full control over resource approvals, user access, and platform activity through a dedicated admin interface.'),
+        ('M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', 'feature-icon-terracotta', 'Academic Collaboration', 'Students and faculty in the same institution share a common resource library, building a curated, peer-reviewed knowledge base together.'),
+      ] %}
+      <div class="feature-card">
+        <div class="feature-icon {{ icon_class }}" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="{{ icon_path }}"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">{{ title }}</h3>
+        <p class="feature-body">{{ body }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ───────────────────────────────────────────── -->
+<section class="section" style="background:var(--cx-bg-surface);border-top:1px solid var(--cx-border-muted);border-bottom:1px solid var(--cx-border-muted);" aria-labelledby="how-title">
+  <div class="section-inner" style="text-align:center;">
+    <p class="section-eyebrow">Simple workflow</p>
+    <h2 class="section-title" id="how-title" style="margin:0 auto;">How CampusX works</h2>
+    <p class="section-body" style="margin:var(--cx-space-4) auto 0;">Four steps from joining to understanding your coursework better.</p>
+
+    <div class="steps-row">
+      {% for n, title, body in [
+        ('1', 'Discover', 'Browse or search your institution''s approved academic resources. Filter by subject, resource type, or contributor.'),
+        ('2', 'Learn', 'Read notes, papers, and reference material. Bookmark what matters. Organize your study library.'),
+        ('3', 'Ask CampusX AI', 'Ask questions about your coursework. Get grounded answers with direct citations from the source material.'),
+        ('4', 'Improve', 'Generate quizzes and flashcards to test yourself. Track your progress and build study habits.'),
+      ] %}
+      <div class="step">
+        <div class="step-number" aria-hidden="true">{{ n }}</div>
+        <div class="step-title">{{ title }}</div>
+        <p class="step-body">{{ body }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── AI SECTION ─────────────────────────────────────────────── -->
+<section class="section" id="ai-section" aria-labelledby="ai-title">
+  <div class="section-inner">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-12);align-items:center;">
+      <div>
+        <p class="section-eyebrow">CampusX AI</p>
+        <h2 class="section-title" id="ai-title">AI answers grounded in your coursework</h2>
+        <p class="section-body">
+          CampusX AI does not search the open internet. It reads from your institution's
+          approved, faculty-curated resources — so every answer comes with a source you can verify.
+        </p>
+        <ul style="margin-top:var(--cx-space-6);display:flex;flex-direction:column;gap:var(--cx-space-3);list-style:none;padding:0;">
+          {% for item in ['Grounded answers with source citations', 'Confidence scoring — know how certain the answer is', 'Single-document and multi-document chat', 'Injection-safe — your academic context is protected', 'AI study tools: quizzes, flashcards, summaries'] %}
+          <li style="display:flex;align-items:flex-start;gap:var(--cx-space-3);font-size:var(--cx-text-body-sm);color:var(--cx-text-secondary);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest)" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ item }}
+          </li>
+          {% endfor %}
+        </ul>
+        <div style="margin-top:var(--cx-space-8);">
+          <a href="/register" class="btn btn-primary">Try CampusX AI</a>
+        </div>
+      </div>
+
+      <!-- AI demo preview -->
+      <div class="ai-demo" aria-label="CampusX AI product preview (static demonstration)" role="img">
+        <div class="ai-demo-topbar">
+          <div class="ai-demo-dot" aria-hidden="true"></div>
+          <div class="ai-demo-dot" aria-hidden="true"></div>
+          <div class="ai-demo-dot" aria-hidden="true"></div>
+          <span class="ai-demo-title">CampusX AI · Chat</span>
+        </div>
+        <div class="ai-demo-body">
+          <div class="demo-question">
+            What is the difference between memoization and tabulation in dynamic programming?
+          </div>
+          <div class="demo-answer">
+            <div class="demo-answer-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              CampusX AI
+            </div>
+            <div class="demo-answer-body">
+              <strong>Memoization</strong> is a top-down approach: you solve the problem recursively and cache results as you go. It only computes subproblems you actually need.<br><br>
+              <strong>Tabulation</strong> is bottom-up: you build a table of all subproblems from the smallest case upward, iteratively. It avoids recursion overhead and is often more memory-efficient.
+            </div>
+            <div class="demo-confidence">
+              <span>High confidence</span>
+              <div class="demo-confidence-track">
+                <div class="demo-confidence-fill" style="width:82%;"></div>
+              </div>
+              <span>0.82 · SUPPORTED</span>
+            </div>
+            <div class="demo-citation">
+              <div class="demo-citation-title">Introduction to Dynamic Programming — Lecture Notes</div>
+              <div class="demo-citation-body">"Memoization caches intermediate results…tabulation builds the solution iteratively from base cases…"</div>
+              <div style="color:var(--cx-text-muted);font-size:11px;margin-top:4px;">Dr. Meera Nair · CS402 · Page 14</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── RESOURCES ──────────────────────────────────────────────── -->
+<section class="section" style="background:var(--cx-bg-surface);border-top:1px solid var(--cx-border-muted);" id="resources" aria-labelledby="resources-title">
+  <div class="section-inner">
+    <p class="section-eyebrow">Resource library</p>
+    <h2 class="section-title" id="resources-title">Academic materials, organized</h2>
+    <p class="section-body">Your institution's knowledge base — curated, approved, and searchable.</p>
+
+    <div class="resource-cats">
+      {% for icon_path, color, bg, label in [
+        ('M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z', 'var(--cx-color-forest)', 'rgba(36,72,58,0.10)', 'Lecture Notes'),
+        ('M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', 'var(--cx-color-terracotta)', 'rgba(184,92,56,0.10)', 'Question Papers'),
+        ('M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', 'var(--cx-color-ochre)', 'var(--cx-color-ochre-pale)', 'Study Material'),
+        ('M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z', 'var(--cx-color-moss)', 'rgba(97,116,90,0.10)', 'Reference Books'),
+      ] %}
+      <div class="resource-cat">
+        <div class="resource-cat-icon" style="background:{{ bg }};" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ color }}" stroke-width="1.75">
+            <path d="{{ icon_path }}"/>
+          </svg>
+        </div>
+        <div class="resource-cat-name">{{ label }}</div>
+        <div class="resource-cat-count">Faculty-approved · Searchable · AI-ready</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="text-align:center;margin-top:var(--cx-space-8);">
+      <a href="/register" class="btn btn-secondary">Browse the library →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── STUDENT BENEFITS ───────────────────────────────────────── -->
+<section class="section" aria-labelledby="benefits-title">
+  <div class="section-inner">
+    <p class="section-eyebrow">For students</p>
+    <h2 class="section-title" id="benefits-title">Study smarter, not harder</h2>
+    <div class="benefits-grid">
+      {% for title, body in [
+        ('Find resources in seconds', 'Semantic search understands the topic you''re looking for — not just exact word matches.'),
+        ('Ask questions about your notes', 'CampusX AI reads your materials and answers with direct citations, so you know exactly where the information came from.'),
+        ('Turn notes into study tools', 'Generate subject-specific quizzes, spaced-repetition flashcards, and structured summaries automatically.'),
+        ('Everything in one place', 'Notes, papers, textbook chapters, and your AI chat history — all organized within your institution''s platform.'),
+        ('Confidence in your answers', 'Every AI response includes a confidence score and grounding status. Know when to dig deeper.'),
+        ('AI-ready for exam prep', 'Quiz yourself on uploaded documents, review flashcard decks, and get AI summaries of long chapters.'),
+      ] %}
+      <div class="benefit-item">
+        <div class="benefit-check" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest)" stroke-width="2.5" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div>
+          <div class="benefit-title">{{ title }}</div>
+          <p class="benefit-body">{{ body }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── INSTITUTION / FACULTY ──────────────────────────────────── -->
+<section class="section" style="background:var(--cx-color-sand);border-top:1px solid var(--cx-border-default);" id="institutions" aria-labelledby="inst-title">
+  <div class="section-inner" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--cx-space-12);align-items:center;">
+    <div>
+      <p class="section-eyebrow">For institutions</p>
+      <h2 class="section-title" id="inst-title">Control, quality, and visibility</h2>
+      <p class="section-body">
+        CampusX gives institutions full control over the academic knowledge base their students learn from.
+        Faculty curate and approve resources. Admins manage users, access, and platform activity.
+      </p>
+      <ul style="margin-top:var(--cx-space-6);display:flex;flex-direction:column;gap:var(--cx-space-3);list-style:none;padding:0;">
+        {% for item in ['Faculty upload and approve course resources', 'Admin-managed user roles and access control', 'Institution-scoped data — fully isolated from other institutions', 'Resource approval queue with audit trail', 'Analytics on resource access and AI usage'] %}
+        <li style="display:flex;align-items:flex-start;gap:var(--cx-space-3);font-size:var(--cx-text-body-sm);color:var(--cx-text-secondary);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-terracotta)" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ item }}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--cx-space-4);">
+      {% for icon_path, title, body in [
+        ('M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z', 'Institution isolation', 'Each institution''s resources, users, and AI interactions are completely separate. No data leaks across institutions.'),
+        ('M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 'Approval workflow', 'Faculty review and approve resources before they enter the AI retrieval pipeline. Quality is maintained by humans.'),
+        ('M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', 'Usage analytics', 'Track which resources students access most, AI query patterns, and learning activity across the institution.'),
+      ] %}
+      <div style="display:flex;gap:var(--cx-space-4);align-items:flex-start;background:var(--cx-bg-surface);border:1px solid var(--cx-border-muted);border-radius:var(--cx-radius-md);padding:var(--cx-space-4) var(--cx-space-5);">
+        <div style="width:36px;height:36px;background:rgba(36,72,58,0.10);border-radius:var(--cx-radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest)" stroke-width="1.75" aria-hidden="true">
+            <path d="{{ icon_path }}"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size:var(--cx-text-body-sm);font-weight:var(--cx-weight-semibold);color:var(--cx-text-primary);margin-bottom:2px;">{{ title }}</div>
+          <p style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);line-height:var(--cx-leading-relaxed);">{{ body }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ───────────────────────────────────────────────── -->
+<section class="cta-section" aria-labelledby="cta-headline">
+  <div style="max-width:640px;margin:0 auto;">
+    <h2 class="cta-headline" id="cta-headline">Build a smarter way to learn.</h2>
+    <p class="cta-sub">Join CampusX and give your students AI-powered academic tools grounded in your institution's own resources.</p>
+    <div class="cta-actions">
+      <a href="/register" class="btn btn-cta-white btn-lg">Create Account</a>
+      <a href="/login"    class="btn btn-cta-outline btn-lg">Log In</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────── -->
+<footer class="landing-footer" aria-label="Site footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-brand-name">
+        <span class="footer-brand-dot" aria-hidden="true"></span>
+        CampusX
+      </div>
+      <div class="footer-tagline">Learn Smarter. Search Faster. Powered by AI.</div>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <div class="footer-col-label">Product</div>
+        <a href="#features">Features</a>
+        <a href="#ai-section">CampusX AI</a>
+        <a href="#resources">Resources</a>
+        <a href="/design-system">Design System</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-label">Account</div>
+        <a href="/login">Log in</a>
+        <a href="/register">Create account</a>
+        <a href="/forgot-password">Forgot password</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2026 CampusX. Academic resources powered by AI.
+  </div>
+</footer>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/api.js"></script>
+<script>
+(function () {
+  // If authenticated, add dashboard link to nav
+  if (CampusX.auth.isAuthenticated()) {
+    const role = CampusX.auth.getRole();
+    const dest = CampusX.dashboardForRole(role);
+    // Replace "Log in / Get Started" with "Go to Dashboard"
+    const navActions = document.querySelector('.nav-actions');
+    if (navActions) {
+      navActions.innerHTML = '<a href="' + dest + '" class="btn btn-primary btn-sm">Go to Dashboard</a>';
+    }
+  }
+
+  // Mobile nav
+  const openBtn  = document.getElementById('mobile-open');
+  const closeBtn = document.getElementById('mobile-close');
+  const mobileNav= document.getElementById('mobile-nav');
+
+  openBtn.addEventListener('click', () => {
+    mobileNav.classList.add('open');
+    openBtn.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+  });
+  function closeMobile() {
+    mobileNav.classList.remove('open');
+    openBtn.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    openBtn.focus();
+  }
+  closeBtn.addEventListener('click', closeMobile);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMobile(); });
+
+  // Smooth scroll for nav anchors
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        closeMobile();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

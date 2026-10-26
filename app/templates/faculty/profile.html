@@ -1,0 +1,263 @@
+{% set active_page = "profile" %}
+{% extends "base.html" %}
+
+{% block title %}My Profile — CampusX{% endblock %}
+{% block topbar_title %}Profile{% endblock %}
+
+{% block sidebar %}
+{% include "faculty/_nav.html" %}
+{% endblock %}
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">F</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Faculty</div>
+    <div class="sidebar-user-role" id="sidebar-role">Faculty Workspace</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/faculty/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item" aria-current="page">Profile</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <div class="page-header">
+    <h1 class="page-header-title">My Profile</h1>
+    <p class="page-header-sub">Your faculty account information</p>
+  </div>
+
+  <!-- Loading -->
+  <div id="profile-loading" aria-busy="true">
+    <div class="fx-profile-card">
+      <div style="display:flex;gap:var(--cx-space-5);align-items:center;margin-bottom:var(--cx-space-6);">
+        <div class="skeleton" style="width:72px;height:72px;border-radius:50%;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div class="skeleton skeleton-title" style="width:60%;"></div>
+          <div class="skeleton skeleton-text short" style="width:40%;margin-top:var(--cx-space-2);"></div>
+        </div>
+      </div>
+      {% for _ in range(5) %}
+      <div class="fx-profile-row">
+        <div class="skeleton skeleton-text short" style="width:120px;"></div>
+        <div class="skeleton skeleton-text med" style="width:200px;"></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Profile content -->
+  <div id="profile-content" style="display:none;">
+
+    <!-- Profile card -->
+    <div class="fx-profile-card">
+
+      <!-- Avatar + name header -->
+      <div class="fx-profile-header">
+        <div class="avatar avatar-forest fx-profile-avatar" id="profile-avatar" aria-hidden="true">F</div>
+        <div class="fx-profile-header-info">
+          <h2 class="fx-profile-name" id="profile-name">—</h2>
+          <div class="fx-profile-badges">
+            <span class="badge" id="profile-role-badge">Faculty</span>
+            <span class="badge" id="profile-status-badge" style="display:none;"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile fields -->
+      <div class="fx-profile-fields" role="list" aria-label="Profile information">
+
+        <div class="fx-profile-row" role="listitem">
+          <dt class="fx-profile-label">Email</dt>
+          <dd class="fx-profile-value" id="profile-email">—</dd>
+        </div>
+
+        <div class="fx-profile-row" role="listitem">
+          <dt class="fx-profile-label">Display Name</dt>
+          <dd class="fx-profile-value" id="profile-display-name">—</dd>
+        </div>
+
+        <div class="fx-profile-row" id="profile-dept-row" role="listitem" style="display:none;">
+          <dt class="fx-profile-label">Department</dt>
+          <dd class="fx-profile-value" id="profile-dept">—</dd>
+        </div>
+
+        <div class="fx-profile-row" id="profile-tz-row" role="listitem" style="display:none;">
+          <dt class="fx-profile-label">Timezone</dt>
+          <dd class="fx-profile-value" id="profile-tz">—</dd>
+        </div>
+
+        <div class="fx-profile-row" role="listitem">
+          <dt class="fx-profile-label">Member since</dt>
+          <dd class="fx-profile-value" id="profile-since">—</dd>
+        </div>
+
+      </div><!-- /.fx-profile-fields -->
+    </div><!-- /.fx-profile-card -->
+
+    <!-- Institution section (if available) -->
+    <div class="fx-profile-card" id="profile-institution-card" style="display:none;">
+      <h3 class="fx-profile-section-title">Institution</h3>
+      <div class="fx-profile-fields" role="list" aria-label="Institution information">
+        <div class="fx-profile-row" role="listitem">
+          <dt class="fx-profile-label">Name</dt>
+          <dd class="fx-profile-value" id="inst-name">—</dd>
+        </div>
+        <div class="fx-profile-row" id="inst-city-row" role="listitem" style="display:none;">
+          <dt class="fx-profile-label">Location</dt>
+          <dd class="fx-profile-value" id="inst-city">—</dd>
+        </div>
+        <div class="fx-profile-row" id="inst-code-row" role="listitem" style="display:none;">
+          <dt class="fx-profile-label">Code</dt>
+          <dd class="fx-profile-value" id="inst-code">—</dd>
+        </div>
+      </div>
+    </div>
+
+    <!-- Read-only notice -->
+    <p class="fx-profile-notice" aria-live="polite">
+      Profile information is managed by your institution administrator.
+    </p>
+
+  </div><!-- /#profile-content -->
+
+  <!-- Error -->
+  <div id="profile-error" style="display:none;">
+    <div class="empty-state">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="empty-state-title">Could not load profile</div>
+      <p class="empty-state-body" id="profile-error-msg">An error occurred. Please try again.</p>
+      <button class="btn btn-primary" onclick="loadProfile()">Retry</button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/faculty/profile');
+    return;
+  }
+  var _role = CampusX.auth.getRole();
+  if (_role === 'STUDENT' || _role === 'GUEST') {
+    window.location.replace(CampusX.dashboardForRole(_role));
+    return;
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+    } catch(e) { return iso; }
+  }
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value || '—';
+  }
+  function showEl(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = '';
+  }
+
+  async function loadProfile() {
+    document.getElementById('profile-loading').style.display = '';
+    document.getElementById('profile-content').style.display = 'none';
+    document.getElementById('profile-error').style.display = 'none';
+
+    try {
+      var res = await fetch('/api/v1/faculty/profile', {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() }
+      });
+
+      if (res.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      var json = await res.json();
+      if (!res.ok) {
+        throw new Error((json.error && json.error.message) || 'Failed to load profile.');
+      }
+
+      var p = json.data || json;
+
+      // Sidebar user
+      var name = p.full_name || p.display_name || 'Faculty';
+      var initials = name.split(' ').map(function(w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+      document.getElementById('sidebar-name').textContent = name;
+      document.getElementById('sidebar-avatar').textContent = initials;
+
+      // Avatar
+      var av = document.getElementById('profile-avatar');
+      if (av) av.textContent = initials;
+
+      // Name
+      setText('profile-name', p.full_name || p.display_name);
+
+      // Role badge
+      var roleBadge = document.getElementById('profile-role-badge');
+      if (roleBadge) roleBadge.textContent = p.role || 'Faculty';
+
+      // Status badge (only if not 'active')
+      if (p.status && p.status !== 'active') {
+        var statusBadge = document.getElementById('profile-status-badge');
+        if (statusBadge) { statusBadge.textContent = p.status; statusBadge.style.display = ''; }
+      }
+
+      // Fields
+      setText('profile-email', p.email);
+      setText('profile-display-name', p.display_name || p.full_name);
+      setText('profile-since', formatDate(p.created_at));
+
+      if (p.department_name) {
+        setText('profile-dept', p.department_name);
+        showEl('profile-dept-row');
+      }
+      if (p.timezone) {
+        setText('profile-tz', p.timezone);
+        showEl('profile-tz-row');
+      }
+
+      // Institution section
+      if (p.institution) {
+        var inst = p.institution;
+        showEl('profile-institution-card');
+        setText('inst-name', inst.name);
+        if (inst.code) { setText('inst-code', inst.code); showEl('inst-code-row'); }
+        var loc = [inst.city, inst.country].filter(Boolean).join(', ');
+        if (loc) { setText('inst-city', loc); showEl('inst-city-row'); }
+      }
+
+      document.getElementById('profile-loading').style.display = 'none';
+      document.getElementById('profile-content').style.display = '';
+
+    } catch (err) {
+      document.getElementById('profile-loading').style.display = 'none';
+      document.getElementById('profile-error').style.display = '';
+      document.getElementById('profile-error-msg').textContent = err && err.message ? err.message : 'Unable to load profile.';
+    }
+  }
+
+  window.loadProfile = loadProfile;
+  loadProfile();
+})();
+</script>
+{% endblock %}

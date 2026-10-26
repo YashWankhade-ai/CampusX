@@ -84,6 +84,8 @@ class ResourceService:
                 return None
 
         # ── Safe metadata dict — NO storage paths, NO internal paths ────
+        subj_name = resource.subject.name if resource.subject else None
+        subj_code = resource.subject.code if resource.subject else None
         return {
             "id": str(resource.id),
             "title": resource.title,
@@ -91,7 +93,11 @@ class ResourceService:
             "status": resource.status,
             "material_type": resource.material_type.value,
             "author_id": str(resource.author_id),
+            "faculty_name": resource.faculty_name,
+            "department_name": resource.department_name,
             "subject_id": str(resource.subject_id) if resource.subject_id else None,
+            "subject_name": subj_name,
+            "subject_code": subj_code,
             "topic_id": str(resource.topic_id) if resource.topic_id else None,
             "created_at": resource.created_at.isoformat() if resource.created_at else None,
             "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
@@ -101,7 +107,7 @@ class ResourceService:
         return self.repository.list_paginated(
             page=page,
             per_page=limit,
-            filters={"subject_id": subject_id, "category_id": category_id},
+            filters={"subject_id": subject_id, "category_id": category_id, "status": "APPROVED"},
             sort_by=sort_by,
             search_query=search
         )
@@ -117,4 +123,9 @@ class ResourceService:
         )
 
     def get_download_link(self, resource_id: str, user_id: str = None):
-        return self.download_service.generate_presigned_url(resource_id=resource_id, user_id=user_id)
+        if user_id:
+            try:
+                self.download_service.record_download_event(user_id, resource_id)
+            except Exception:
+                pass
+        return f"/api/v1/resources/{resource_id}/file"

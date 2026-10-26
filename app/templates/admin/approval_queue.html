@@ -1,13 +1,360 @@
+{% set active_page = "approval_queue" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
-{% endblock %}
-{% block content %}
-<div class="glass-panel">
-    <h1>Admin: Approval_queue</h1>
-    <p>Welcome to the admin interface.</p>
+
+{% block title %}Study Material Approval Queue — CampusX{% endblock %}
+{% block topbar_title %}Approval Queue{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<div class="top-breadcrumb-bar" style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--cx-color-ink-muted);">
+  <a href="/admin/dashboard" style="color:#64748B;text-decoration:none;">Dashboard</a>
+  <span style="color:#94A3B8;">&rsaquo;</span>
+  <span style="color:#0F172A;font-weight:700;">Approval Queue</span>
 </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner" style="width:100%;padding:0 0 64px 0;">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <h1 style="font-size:26px;font-weight:800;color:#0F172A;margin:0;letter-spacing:-0.02em;">
+          Study Material Approval Queue
+        </h1>
+        <span style="background:#FEF3C7;color:#B45309;font-size:12.5px;font-weight:700;padding:3px 12px;border-radius:12px;">
+          {{ approvals.pending_count }} Pending Review
+        </span>
+      </div>
+      <p style="font-size:14px;color:#64748B;margin:6px 0 0 0;">
+        Review faculty-submitted lecture notes, question papers, and course study materials before student publication.
+      </p>
+    </div>
+  </div>
+
+  <!-- TABS BAR -->
+  <div style="display:flex;border-bottom:1px solid #E2E8F0;margin-bottom:24px;gap:20px;">
+    <button type="button" class="tab-btn active" onclick="switchTab('pending', this)" style="background:none;border:none;border-bottom:2px solid #0F172A;padding:10px 4px;font-size:14px;font-weight:700;color:#0F172A;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+      <span>Pending Moderation</span>
+      <span style="background:#FEF3C7;color:#B45309;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;">
+        {{ approvals.pending_count }}
+      </span>
+    </button>
+    <button type="button" class="tab-btn" onclick="switchTab('approved', this)" style="background:none;border:none;border-bottom:2px solid transparent;padding:10px 4px;font-size:14px;font-weight:600;color:#64748B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+      <span>Approved Materials</span>
+      <span style="background:#E2E8F0;color:#475569;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;">
+        {{ approvals.approved_count }}
+      </span>
+    </button>
+    <button type="button" class="tab-btn" onclick="switchTab('rejected', this)" style="background:none;border:none;border-bottom:2px solid transparent;padding:10px 4px;font-size:14px;font-weight:600;color:#64748B;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+      <span>Rejected</span>
+      <span style="background:#E2E8F0;color:#475569;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;">
+        {{ approvals.rejected_count }}
+      </span>
+    </button>
+  </div>
+
+  <!-- 1. PENDING SECTION -->
+  <div id="tab-section-pending">
+    {% if approvals.pending and approvals.pending|length > 0 %}
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      {% for item in approvals.pending %}
+      <div id="queue-item-{{ item.id }}" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:320px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+            <span style="background:#EEF5F9;color:#0F172A;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;">
+              {{ item.material_type }}
+            </span>
+            {% if item.department_name %}
+            <span style="background:#E0E7FF;color:#3730A3;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;">
+              {{ item.department_name }}
+            </span>
+            {% endif %}
+            <span style="background:#EBF4EE;color:#1E5034;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;">
+              {{ item.subject_name }}
+            </span>
+            <span style="font-size:12.5px;color:#64748B;">Submitted on {{ item.created_at }}</span>
+          </div>
+
+          <h3 style="font-size:17px;font-weight:800;color:#0F172A;margin:0 0 6px 0;line-height:1.3;">
+            {{ item.title }}
+          </h3>
+          <p style="font-size:14px;color:#475569;margin:0 0 14px 0;line-height:1.5;">
+            {{ item.description }}
+          </p>
+
+          <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:#64748B;padding-top:12px;border-top:1px solid #F1F5F9;flex-wrap:wrap;">
+            <div>
+              Faculty / Teacher: <strong style="color:#0F172A;">{{ item.faculty_name or item.author_name }}</strong>
+            </div>
+            <div>&bull;</div>
+            <div>
+              Uploaded by: <span style="color:#0F172A;">{{ item.author_name }}</span>
+              {% if item.author_email %}<span style="color:#64748B;">({{ item.author_email }})</span>{% endif %}
+            </div>
+            <div>&bull;</div>
+            <div>Status: <span style="background:#FEF3C7;color:#B45309;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11px;">PENDING REVIEW</span></div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:140px;">
+          <form method="POST" action="/admin/approvals/{{ item.id }}/approve" style="margin:0;" onsubmit="return handleQueueApprove('{{ item.id }}', this, event)">
+            <button type="submit" style="width:100%;background:#1E5034;color:#FFFFFF;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Approve
+            </button>
+          </form>
+
+          <a href="/api/v1/resources/{{ item.id }}/view" target="_blank" style="box-sizing:border-box;width:100%;background:#F8FAFC;color:#0F172A;border:1px solid #CBD5E1;padding:7px 14px;border-radius:6px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Open Online
+          </a>
+
+          <a href="/api/v1/resources/{{ item.id }}/file" target="_blank" download style="box-sizing:border-box;width:100%;background:#FFFFFF;color:#475569;border:1px solid #E2E8F0;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </a>
+
+          <form method="POST" action="/admin/approvals/{{ item.id }}/reject" style="margin:0;" onsubmit="return handleQueueReject('{{ item.id }}', this, event)">
+            <button type="submit" style="width:100%;background:#FFFFFF;color:#B45309;border:1px solid #FDE68A;padding:7px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              Reject
+            </button>
+          </form>
+
+          <button type="button" onclick="handleQueueDelete('{{ item.id }}', '{{ item.title | escape }}')" style="width:100%;background:#FFFFFF;color:#DC2626;border:1px solid #FECACA;padding:7px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:48px 20px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;">
+      <div style="width:52px;height:52px;border-radius:50%;background:#EBF4EE;color:#1E5034;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h3 style="font-size:18px;font-weight:800;color:#0F172A;margin:0 0 6px 0;">All Clear! No Pending Approvals</h3>
+      <p style="font-size:14px;color:#64748B;margin:0;">All uploaded faculty materials have been reviewed and published.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 2. APPROVED SECTION -->
+  <div id="tab-section-approved" style="display:none;">
+    {% if approvals.approved and approvals.approved|length > 0 %}
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      {% for item in approvals.approved %}
+      <div id="queue-item-{{ item.id }}" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:280px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="background:#CBE6D5;color:#1E5034;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;">APPROVED</span>
+            <span style="background:#EEF5F9;color:#0F172A;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;">{{ item.material_type }}</span>
+            {% if item.department_name %}
+            <span style="background:#E0E7FF;color:#3730A3;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;">{{ item.department_name }}</span>
+            {% endif %}
+            <span style="font-size:12px;color:#64748B;">{{ item.subject_name }}</span>
+          </div>
+          <h4 style="margin:0 0 4px 0;font-size:15px;font-weight:700;color:#0F172A;">{{ item.title }}</h4>
+          <div style="font-size:12.5px;color:#64748B;">Faculty: <strong style="color:#0F172A;">{{ item.faculty_name or item.author_name }}</strong> &bull; Author: {{ item.author_name }} &bull; Published: {{ item.created_at }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <a href="/api/v1/resources/{{ item.id }}/view" target="_blank" style="background:#F8FAFC;color:#0F172A;border:1px solid #CBD5E1;padding:8px 14px;border-radius:6px;font-size:12.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Open Online
+          </a>
+          <a href="/api/v1/resources/{{ item.id }}/file" target="_blank" download style="background:#F1F5F9;color:#334155;border:1px solid #E2E8F0;padding:8px 14px;border-radius:6px;font-size:12.5px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </a>
+          <button type="button" onclick="handleQueueDelete('{{ item.id }}', '{{ item.title | escape }}')" style="background:#FFFFFF;color:#DC2626;border:1px solid #FECACA;padding:8px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;color:#64748B;">
+      No approved documents yet.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 3. REJECTED SECTION -->
+  <div id="tab-section-rejected" style="display:none;">
+    {% if approvals.rejected and approvals.rejected|length > 0 %}
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      {% for item in approvals.rejected %}
+      <div id="queue-item-{{ item.id }}" style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:280px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;">REJECTED</span>
+            <span style="font-size:12px;color:#64748B;">{{ item.subject_name }}</span>
+          </div>
+          <h4 style="margin:0 0 2px 0;font-size:15px;font-weight:700;color:#0F172A;">{{ item.title }}</h4>
+          <div style="font-size:12.5px;color:#64748B;">Author: {{ item.author_name }}</div>
+        </div>
+        <div>
+          <button type="button" onclick="handleQueueDelete('{{ item.id }}', '{{ item.title | escape }}')" style="background:#FFFFFF;color:#DC2626;border:1px solid #FECACA;padding:8px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Delete
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;color:#64748B;">
+      No rejected documents.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Client-side Tab Switching & AJAX script -->
+<script>
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = '#64748B';
+    b.style.fontWeight = '600';
+  });
+  btn.style.borderBottomColor = '#0F172A';
+  btn.style.color = '#0F172A';
+  btn.style.fontWeight = '700';
+
+  document.getElementById('tab-section-pending').style.display = (tab === 'pending') ? 'block' : 'none';
+  document.getElementById('tab-section-approved').style.display = (tab === 'approved') ? 'block' : 'none';
+  document.getElementById('tab-section-rejected').style.display = (tab === 'rejected') ? 'block' : 'none';
+}
+
+async function handleQueueApprove(id, form, e) {
+  e.preventDefault();
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  btn.innerText = 'Approving...';
+  try {
+    const res = await fetch('/admin/approvals/' + id + '/approve', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const card = document.getElementById('queue-item-' + id);
+      if (card) {
+        card.style.background = '#ECFDF5';
+        card.innerHTML = '<div style="padding:16px;color:#065F46;font-weight:700;font-size:14px;">✓ Document approved successfully and released to students.</div>';
+        setTimeout(() => { card.remove(); }, 1500);
+      }
+    } else {
+      form.submit();
+    }
+  } catch (err) {
+    form.submit();
+  }
+}
+
+async function handleQueueReject(id, form, e) {
+  e.preventDefault();
+  const reason = prompt('Optional reason for rejection:', 'Needs revisions before publishing');
+  if (reason === null) return false;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  btn.innerText = 'Rejecting...';
+  try {
+    const fd = new FormData();
+    fd.append('reason', reason);
+    const res = await fetch('/admin/approvals/' + id + '/reject', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: fd
+    });
+    if (res.ok) {
+      const card = document.getElementById('queue-item-' + id);
+      if (card) {
+        card.style.background = '#FEF2F2';
+        card.innerHTML = '<div style="padding:16px;color:#991B1B;font-weight:700;font-size:14px;">✕ Document rejected and returned to submitter.</div>';
+        setTimeout(() => { card.remove(); }, 1500);
+      }
+    } else {
+      form.submit();
+    }
+  } catch (err) {
+    form.submit();
+  }
+}
+
+async function handleQueueDelete(id, title) {
+  if (!confirm(`Are you sure you want to delete "${title || 'this resource'}"? It will be permanently removed from the system and file storage.`)) {
+    return;
+  }
+  const card = document.getElementById('queue-item-' + id);
+  if (card) {
+    card.style.opacity = '0.5';
+    card.style.pointerEvents = 'none';
+  }
+  try {
+    const res = await fetch('/admin/approvals/' + id + '/delete', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (card) {
+        card.style.background = '#FEF2F2';
+        card.innerHTML = '<div style="padding:16px;color:#991B1B;font-weight:700;font-size:14px;">✓ Resource deleted permanently.</div>';
+        setTimeout(() => { card.remove(); }, 1200);
+      }
+    } else {
+      alert((data && data.error) || 'Failed to delete resource.');
+      if (card) {
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+      }
+    }
+  } catch (err) {
+    alert('An error occurred while deleting the resource.');
+    if (card) {
+      card.style.opacity = '1';
+      card.style.pointerEvents = 'auto';
+    }
+  }
+}
+</script>
 {% endblock %}

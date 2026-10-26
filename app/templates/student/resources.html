@@ -1,0 +1,231 @@
+{% set active_page = "resources" %}
+{% extends "base.html" %}
+
+{% block title %}Resources — CampusX{% endblock %}
+{% block topbar_title %}Resources{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Resources</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--cx-space-4);">
+    <div>
+      <h1 class="page-header-title">Resources</h1>
+      <p class="page-header-sub">Browse approved academic resources</p>
+    </div>
+    <div style="display:flex;gap:var(--cx-space-3);flex-shrink:0;">
+      <a href="/student/upload" class="btn btn-primary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Resource
+      </a>
+      <a href="/student/search" class="btn btn-secondary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter row -->
+  <div style="display:flex;gap:var(--cx-space-3);margin-bottom:var(--cx-space-6);flex-wrap:wrap;align-items:center;">
+    <select class="input" id="filter-category" style="max-width:180px;padding:var(--cx-space-2) var(--cx-space-3);" aria-label="Filter by type">
+      <option value="">All types</option>
+      <option value="NOTE">Notes</option>
+      <option value="QUESTION_PAPER">Question Papers</option>
+      <option value="REFERENCE">Reference</option>
+      <option value="BOOK">Books</option>
+      <option value="RECORDING">Recordings</option>
+    </select>
+    <select class="input" id="filter-sort" style="max-width:180px;padding:var(--cx-space-2) var(--cx-space-3);" aria-label="Sort by">
+      <option value="created_at">Newest first</option>
+      <option value="title">Title A–Z</option>
+    </select>
+    <span id="result-count" style="font-size:var(--cx-text-caption);color:var(--cx-text-muted);margin-left:auto;"></span>
+  </div>
+
+  <!-- Loading -->
+  <div class="resource-list" id="resources-loading">
+    {% for _ in range(6) %}
+    <div class="resource-list-item">
+      <div class="skeleton" style="width:32px;height:32px;border-radius:var(--cx-radius-sm);flex-shrink:0;"></div>
+      <div class="resource-list-body">
+        <div class="skeleton skeleton-title" style="width:60%;"></div>
+        <div class="skeleton skeleton-text med"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Content -->
+  <div id="resources-content" style="display:none;">
+    <div class="resource-list" id="resource-list" role="list" aria-label="Resources"></div>
+
+    <div class="empty-state" id="resources-empty" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <div class="empty-state-title">No resources found</div>
+      <p class="empty-state-body">Your institution hasn't published approved resources yet, or no results match your filters.</p>
+    </div>
+
+    <div class="empty-state" id="resources-error" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="empty-state-title">Could not load resources</div>
+      <p class="empty-state-body" id="resources-error-msg"></p>
+      <button class="btn btn-primary" onclick="loadPage(currentPage)">Retry</button>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination-row" style="display:none;margin-top:var(--cx-space-6);display:flex;gap:var(--cx-space-2);justify-content:center;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" id="btn-prev" onclick="loadPage(currentPage-1)" disabled>← Previous</button>
+      <span id="page-info" style="font-size:var(--cx-text-body-sm);color:var(--cx-text-muted);"></span>
+      <button class="btn btn-secondary btn-sm" id="btn-next" onclick="loadPage(currentPage+1)" disabled>Next →</button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (!CampusX.auth.isAuthenticated()) { window.location.replace('/login?next=/student/resources'); return; }
+
+  let currentPage = 1;
+  const PAGE_LIMIT = 15;
+
+  function typeColor(type) {
+    const t = (type||'').toUpperCase();
+    if (t==='NOTE'||t==='NOTES')          return {bg:'rgba(36,72,58,0.10)',  fg:'var(--cx-color-forest)'};
+    if (t==='QUESTION_PAPER'||t==='EXAM') return {bg:'rgba(184,92,56,0.10)', fg:'var(--cx-color-terracotta)'};
+    if (t==='REFERENCE'||t==='BOOK')      return {bg:'rgba(196,154,69,0.12)',fg:'#7a5a10'};
+    return {bg:'rgba(97,116,90,0.10)', fg:'var(--cx-color-moss)'};
+  }
+
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    const d = (Date.now() - new Date(iso).getTime())/1000;
+    if (d<60) return 'just now';
+    if (d<3600) return Math.floor(d/60)+'m ago';
+    if (d<86400) return Math.floor(d/3600)+'h ago';
+    if (d<2592000) return Math.floor(d/86400)+'d ago';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function renderItem(r) {
+    const c = typeColor(r.resource_type || r.type);
+    const typeLabel = (r.resource_type || r.type || 'Resource').replace(/_/g,' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+    return `
+      <a href="/student/resources/${r.id}" class="resource-list-item" role="listitem" aria-label="${escHtml(r.title)}">
+        <div class="resource-list-icon" style="background:${c.bg};" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${c.fg}" stroke-width="1.75">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+        <div class="resource-list-body">
+          <div class="resource-list-title">${escHtml(r.title || 'Untitled')}</div>
+          <div class="resource-list-meta">
+            <span>${escHtml(typeLabel)}</span>
+            ${r.department_name ? `<span style="background:rgba(36,72,58,0.08);color:var(--cx-color-forest);padding:2px 8px;border-radius:4px;font-weight:600;font-size:11.5px;">${escHtml(r.department_name)}</span>` : ''}
+            ${r.subject_name || r.subject ? `<span>${escHtml(r.subject_name || r.subject)}</span>` : ''}
+            ${r.faculty_name ? `<span style="font-weight:600;color:var(--cx-color-forest);">Teacher: ${escHtml(r.faculty_name)}</span>` : (r.contributor_name ? `<span>By ${escHtml(r.contributor_name)}</span>` : '')}
+            ${r.created_at ? `<span>${relativeTime(r.created_at)}</span>` : ''}
+          </div>
+        </div>
+        <div class="resource-list-action" style="display:flex;align-items:center;gap:8px;">
+          <a href="/api/v1/resources/${r.id}/view" target="_blank" class="btn-quick-view" title="Open Online in Browser" onclick="event.stopPropagation();" style="padding:6px 10px;border-radius:6px;color:#0F172A;background:#F1F5F9;border:1px solid #CBD5E1;display:inline-flex;align-items:center;gap:4px;text-decoration:none;font-size:12px;font-weight:700;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>Open</span>
+          </a>
+          <a href="/api/v1/resources/${r.id}/file" download class="btn-quick-download" title="Download Resource" onclick="event.stopPropagation();" style="padding:6px 8px;border-radius:6px;color:#1E5034;background:#EBF4EE;display:inline-flex;align-items:center;gap:4px;text-decoration:none;font-size:12px;font-weight:700;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Download</span>
+          </a>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cx-text-muted)" stroke-width="2" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      </a>`;
+  }
+
+  async function loadPage(page) {
+    currentPage = Math.max(1, page);
+    const cat = document.getElementById('filter-category').value;
+    const sort = document.getElementById('filter-sort').value;
+
+    const params = new URLSearchParams({ page: currentPage, limit: PAGE_LIMIT, sort_by: sort });
+    if (cat) params.set('category', cat);
+
+    document.getElementById('resources-loading').style.display = '';
+    document.getElementById('resources-content').style.display = 'none';
+
+    try {
+      const res = await fetch('/api/v1/resources?' + params, {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() },
+      });
+      if (res.status === 401) { CampusX.auth.clearSession(); window.location.replace('/login?session=expired'); return; }
+      const json = await res.json();
+      const items = Array.isArray(json.data) ? json.data : [];
+      const meta = json.meta || {};
+      const total = meta.total || items.length;
+
+      document.getElementById('resources-loading').style.display = 'none';
+      document.getElementById('resources-content').style.display = '';
+
+      const list = document.getElementById('resource-list');
+      if (items.length === 0) {
+        list.innerHTML = '';
+        document.getElementById('resources-empty').style.display = '';
+        document.getElementById('pagination-row').style.display = 'none';
+      } else {
+        document.getElementById('resources-empty').style.display = 'none';
+        list.innerHTML = items.map(renderItem).join('');
+        document.getElementById('result-count').textContent = total + ' result' + (total === 1 ? '' : 's');
+
+        // Pagination
+        const totalPages = Math.ceil(total / PAGE_LIMIT);
+        if (totalPages > 1) {
+          document.getElementById('pagination-row').style.display = 'flex';
+          document.getElementById('page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+          document.getElementById('btn-prev').disabled = currentPage <= 1;
+          document.getElementById('btn-next').disabled = currentPage >= totalPages;
+        } else {
+          document.getElementById('pagination-row').style.display = 'none';
+        }
+      }
+    } catch (err) {
+      document.getElementById('resources-loading').style.display = 'none';
+      document.getElementById('resources-content').style.display = '';
+      document.getElementById('resources-error').style.display = '';
+      document.getElementById('resources-error-msg').textContent = err.message || 'Network error.';
+    }
+  }
+
+  // Filter change triggers reload
+  document.getElementById('filter-category').addEventListener('change', () => loadPage(1));
+  document.getElementById('filter-sort').addEventListener('change', () => loadPage(1));
+
+  window.loadPage = loadPage;
+  window.currentPage = currentPage;
+  loadPage(1);
+})();
+</script>
+{% endblock %}

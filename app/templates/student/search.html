@@ -1,13 +1,824 @@
+{% set active_page = "search" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Student Dashboard</a></li>
-    <li><a href="#">Library</a></li>
-</ul>
+
+{% block title %}Search — CampusX{% endblock %}
+{% block topbar_title %}Search{% endblock %}
+
+{% block head_extra %}
+<style>
+/* Modern SaaS UI Search Styles */
+.search-hero-enhanced {
+  background: linear-gradient(135deg, rgba(36,72,58,0.04) 0%, rgba(247,246,243,0.8) 100%);
+  border: 1px solid var(--cx-border-muted, #E4E0D8);
+  border-radius: var(--cx-radius-lg, 12px);
+  padding: var(--cx-space-7, 24px) var(--cx-space-8, 28px);
+  margin-bottom: var(--cx-space-6, 20px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.search-box-wrap-enhanced {
+  position: relative;
+  max-width: 100%;
+  margin-top: var(--cx-space-4, 14px);
+}
+
+.search-box-enhanced {
+  width: 100%;
+  padding: 14px 44px 14px 46px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--cx-text-primary, #1A1A18);
+  background: #FFFFFF;
+  border: 1.5px solid var(--cx-border-muted, #D8D4CC);
+  border-radius: var(--cx-radius-md, 8px);
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.search-box-enhanced:focus {
+  border-color: var(--cx-color-forest, #24483A);
+  box-shadow: 0 0 0 3.5px rgba(36,72,58,0.12);
+}
+
+.cx-search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cx-space-4, 16px);
+  margin-top: var(--cx-space-4, 16px);
+}
+
+.cx-search-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--cx-radius-lg, 12px);
+  padding: var(--cx-space-6, 20px);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+
+.cx-search-card:hover {
+  transform: translateY(-1.5px);
+  border-color: #CBD5E1;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.cx-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cx-space-4, 16px);
+}
+
+.cx-card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  background: rgba(36,72,58,0.08);
+  border-radius: var(--cx-radius-md, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cx-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.cx-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cx-space-3, 10px);
+  flex-wrap: wrap;
+  margin-bottom: var(--cx-space-2, 8px);
+}
+
+.cx-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cx-text-primary, #0F172A);
+  text-decoration: none;
+  line-height: 1.35;
+  transition: color 0.15s ease;
+}
+
+.cx-card-title:hover {
+  color: var(--cx-color-forest, #24483A);
+  text-decoration: underline;
+}
+
+.cx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badge-pdf-content {
+  background: #E8F5E9;
+  color: #1B5E20;
+  border: 1px solid #C8E6C9;
+}
+
+.badge-keyword {
+  background: #E3F2FD;
+  color: #0D47A1;
+  border: 1px solid #BBDEFB;
+}
+
+.badge-hybrid {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+}
+
+.cx-result-snippet-card {
+  background: #F8FAFC;
+  border-left: 3.5px solid var(--cx-color-forest, #24483A);
+  border-radius: 0 var(--cx-radius-md, 8px) var(--cx-radius-md, 8px) 0;
+  padding: 10px 14px;
+  margin: 10px 0 14px 0;
+}
+
+.cx-snippet-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748B;
+  margin-bottom: 4px;
+}
+
+.cx-snippet-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #334155;
+  font-style: italic;
+}
+
+.cx-search-highlight {
+  background: #FEF08A;
+  color: #854D0E;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-style: normal;
+}
+
+.cx-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cx-space-3, 12px);
+  flex-wrap: wrap;
+  padding-top: var(--cx-space-3, 10px);
+  border-top: 1px solid #F1F5F9;
+}
+
+.cx-card-meta {
+  font-size: 12px;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cx-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cx-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
 {% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
 {% block content %}
-<div class="glass-panel">
-    <h1>Student: Search</h1>
-    <p>Welcome to the student interface.</p>
+<div class="page-body-inner">
+
+  <!-- ── Search box ──────────────────────────────────────────── -->
+  <div class="search-hero">
+    <h1 style="font-size:var(--cx-text-h2);font-weight:var(--cx-weight-bold);color:var(--cx-text-primary);margin-bottom:var(--cx-space-2);">Search Resources</h1>
+    <p style="font-size:var(--cx-text-body-sm);color:var(--cx-text-muted);margin-bottom:var(--cx-space-5);">Search across your institution's approved academic resources</p>
+
+    <div class="search-box-wrap" role="combobox" aria-haspopup="listbox" aria-expanded="false" id="search-combobox">
+      <!-- Search icon -->
+      <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+
+      <!-- Search input -->
+      <input
+        class="search-box"
+        id="search-input"
+        type="search"
+        name="q"
+        placeholder="Search resources, topics, subjects…"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+        aria-label="Search resources"
+        aria-autocomplete="list"
+        aria-controls="autocomplete-list"
+        aria-activedescendant=""
+        maxlength="500"
+      >
+
+      <!-- Spinner (shown while searching) -->
+      <div class="search-box-spinner" id="search-spinner" role="status" aria-label="Searching…"></div>
+
+      <!-- Clear button (hidden initially) -->
+      <button class="search-box-clear" id="search-clear" hidden aria-label="Clear search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <!-- Autocomplete dropdown -->
+      <div class="autocomplete-dropdown" id="autocomplete-list" role="listbox" aria-label="Search suggestions"></div>
+    </div>
+  </div>
+
+  <!-- ── Trending (shown only on initial/empty state) ──────── -->
+  <div id="trending-section" class="trending-section">
+    <div class="trending-label">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+      Trending topics
+    </div>
+    <div class="trending-pills" id="trending-pills" role="list" aria-label="Trending search topics"></div>
+  </div>
+
+  <!-- ── Results area ───────────────────────────────────────── -->
+  <div id="search-results-area">
+
+    <!-- State: initial (no query) -->
+    <div id="state-initial" class="search-state">
+      <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <div class="search-state-title">Search your library</div>
+      <p class="search-state-body">Type a topic, subject, or keyword to search across your institution's approved resources.</p>
+    </div>
+
+    <!-- State: loading -->
+    <div id="state-loading" style="display:none;" aria-live="polite" aria-label="Loading search results">
+      <div class="search-results">
+        {% for _ in range(5) %}
+        <div class="search-result-skeleton" aria-hidden="true">
+          <div class="search-result-skeleton-icon skeleton"></div>
+          <div class="search-result-skeleton-body">
+            <div class="skeleton skeleton-title" style="width:55%;"></div>
+            <div class="skeleton skeleton-text wide"></div>
+            <div class="skeleton skeleton-text med"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- State: results -->
+    <div id="state-results" style="display:none;">
+      <div class="search-meta-bar">
+        <div class="search-result-count" id="result-count" role="status" aria-live="polite"></div>
+      </div>
+      <div class="cx-search-results-list" id="result-list" role="list" aria-label="Search results"></div>
+      <div class="search-pagination" id="search-pagination" style="display:none;">
+        <button class="btn btn-secondary btn-sm" id="btn-prev" onclick="goPage(currentPage - 1)" aria-label="Previous page">← Previous</button>
+        <span class="search-pagination-info" id="page-info" aria-live="polite"></span>
+        <button class="btn btn-secondary btn-sm" id="btn-next" onclick="goPage(currentPage + 1)" aria-label="Next page">Next →</button>
+      </div>
+    </div>
+
+    <!-- State: no results -->
+    <div id="state-empty" style="display:none;" class="search-state" role="status" aria-live="polite">
+      <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <div class="search-state-title">No results found</div>
+      <p class="search-state-body" id="empty-msg">Try a different keyword, or browse resources to explore your institution's library.</p>
+      <a href="/student/resources" class="btn btn-secondary">Browse Resources</a>
+    </div>
+
+    <!-- State: error -->
+    <div id="state-error" style="display:none;" class="search-state" role="alert">
+      <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="search-state-title" id="error-title">Search unavailable</div>
+      <p class="search-state-body" id="error-msg">An error occurred. Please try again.</p>
+      <button class="btn btn-primary" onclick="retrySearch()">Try again</button>
+    </div>
+
+    <!-- State: unauthorized -->
+    <div id="state-auth" style="display:none;" class="search-state" role="alert">
+      <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+      </svg>
+      <div class="search-state-title">Session expired</div>
+      <p class="search-state-body">Please log in again to search.</p>
+      <a href="/login?next=/student/search" class="btn btn-primary">Log in</a>
+    </div>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Auth guard ──────────────────────────────────────────────
+  if (window.CampusX && window.CampusX.auth && !CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/student/search');
+    return;
+  }
+
+  // ── Constants ────────────────────────────────────────────────
+  const PAGE_LIMIT = 10;
+
+  // ── State ────────────────────────────────────────────────────
+  let currentPage = 1;
+  let currentQuery = '';
+  let acIndex = -1;     // active autocomplete item index
+  let acItems = [];     // current autocomplete suggestion strings
+  let acOpen = false;
+  let searchInProgress = false;
+
+  // ── Stale-guard for search ───────────────────────────────────
+  const guardedSearch = (window.CampusX && CampusX.search && CampusX.search.staleGuard)
+    ? CampusX.search.staleGuard(CampusX.search.query)
+    : (opts) => (window.CampusX && CampusX.search ? CampusX.search.query(opts) : Promise.resolve({data:[], meta:{}}));
+  const guardedAC = (window.CampusX && CampusX.search && CampusX.search.staleGuard)
+    ? CampusX.search.staleGuard(CampusX.search.autocomplete)
+    : (q) => (window.CampusX && CampusX.search ? CampusX.search.autocomplete(q) : Promise.resolve([]));
+
+  // ── DOM refs ─────────────────────────────────────────────────
+  const inputEl        = document.getElementById('search-input');
+  const clearBtn       = document.getElementById('search-clear');
+  const spinner        = document.getElementById('search-spinner');
+  const combobox       = document.getElementById('search-combobox');
+  const acDropdown     = document.getElementById('autocomplete-list');
+  const trendingSection= document.getElementById('trending-section');
+  const trendingPills  = document.getElementById('trending-pills');
+
+  function $s(id) { return document.getElementById(id); }
+
+  // ── Utility ──────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function relativeTime(iso) {
+    if (!iso) return '';
+    const d = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (d < 60) return 'just now';
+    if (d < 3600) return Math.floor(d/60) + 'm ago';
+    if (d < 86400) return Math.floor(d/3600) + 'h ago';
+    if (d < 2592000) return Math.floor(d/86400) + 'd ago';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function matchTypeColor(type) {
+    // document_id from search results — use forest
+    return { bg: 'rgba(36,72,58,0.10)', fg: 'var(--cx-color-forest)' };
+  }
+
+  function matchBadgeClass(type) {
+    if (!type) return 'match-badge-hybrid';
+    if (type.includes('pdf')) return 'match-badge-dense';
+    if (type.includes('dense')) return 'match-badge-dense';
+    if (type.includes('bm25') || type.includes('keyword')) return 'match-badge-bm25';
+    return 'match-badge-hybrid';
+  }
+
+  function matchBadgeLabel(type) {
+    if (!type) return 'Hybrid';
+    if (type.includes('pdf')) return 'In PDF Content';
+    if (type.includes('dense')) return 'Semantic';
+    if (type.includes('bm25') || type.includes('keyword')) return 'Keyword';
+    return 'Hybrid';
+  }
+
+  // ── URL state ────────────────────────────────────────────────
+  function pushState(q, page) {
+    const url = new URL(window.location.href);
+    if (q) { url.searchParams.set('q', q); } else { url.searchParams.delete('q'); }
+    if (page > 1) { url.searchParams.set('page', String(page)); } else { url.searchParams.delete('page'); }
+    window.history.pushState({ q, page }, '', url.toString());
+  }
+
+  function readState() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      q: params.get('q') || '',
+      page: Math.max(1, parseInt(params.get('page') || '1', 10)),
+    };
+  }
+
+  // ── Show/hide states ─────────────────────────────────────────
+  function showState(name) {
+    ['initial','loading','results','empty','error','auth'].forEach(n => {
+      const el = $s('state-' + n);
+      if (el) el.style.display = n === name ? '' : 'none';
+    });
+    trendingSection.style.display = name === 'initial' ? '' : 'none';
+    if (name === 'loading') {
+      spinner.classList.add('visible');
+      clearBtn.hidden = true;
+    } else {
+      spinner.classList.remove('visible');
+      clearBtn.hidden = !(currentQuery.length > 0);
+    }
+  }
+
+  // ── Render search result item ─────────────────────────────────
+  function renderResult(r) {
+    const isPdfMatch = (r.match_type || '').includes('pdf');
+    const badgeClass = isPdfMatch ? 'badge-pdf-content' : (r.match_type || '').includes('keyword') ? 'badge-keyword' : 'badge-hybrid';
+    const badgeText = isPdfMatch ? 'Found in PDF Document' : 'Matched in Title / Subject';
+    const id = r.document_id || r.id || '';
+    
+    // Highlight matched query term in snippet
+    let snippetHtml = '';
+    if (r.snippet) {
+      let escapedSnippet = escHtml(r.snippet);
+      if (currentQuery && currentQuery.length >= 2) {
+        try {
+          const re = new RegExp('(' + currentQuery.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + ')', 'gi');
+          escapedSnippet = escapedSnippet.replace(re, '<mark class="cx-search-highlight">$1</mark>');
+        } catch (e) {}
+      }
+      snippetHtml = `
+        <div class="cx-result-snippet-card">
+          <div class="cx-snippet-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <span>Extracted Passage from Document</span>
+          </div>
+          <div class="cx-snippet-text">${escapedSnippet}</div>
+        </div>`;
+    }
+
+    return `
+      <div class="cx-search-card" role="listitem">
+        <div class="cx-card-main">
+          <div class="cx-card-icon-wrap" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-forest, #24483A)" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <div class="cx-card-content">
+            <div class="cx-card-top-row">
+              <a href="/student/resources/${escHtml(id)}" class="cx-card-title">${escHtml(r.title || 'Untitled Resource')}</a>
+              <span class="cx-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            
+            ${snippetHtml}
+
+            <div class="cx-card-footer">
+              <div class="cx-card-meta">
+                <span class="cx-meta-item">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Verified Academic Material
+                </span>
+              </div>
+              <div class="cx-card-actions">
+                <a href="/student/resources/${escHtml(id)}" class="btn btn-secondary btn-sm" style="font-size:12px;padding:5px 12px;gap:6px;">
+                  View Resource
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </a>
+                <a href="/student/ai-chat?q=${encodeURIComponent('Tell me about ' + (r.title || 'this topic') + ' from this document')}" class="btn btn-primary btn-sm" style="font-size:12px;padding:5px 12px;gap:6px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  Ask AI About This
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Execute search ────────────────────────────────────────────
+  async function doSearch(q, page) {
+    q = (q || '').trim();
+    if (!q) { showState('initial'); updateClearBtn(''); return; }
+    currentQuery = q;
+    currentPage = page || 1;
+
+    showState('loading');
+
+    try {
+      const res = await guardedSearch({ q, page: currentPage, limit: PAGE_LIMIT });
+      if (res === null) return; // stale
+
+      const items = Array.isArray(res.data) ? res.data : [];
+      const meta = res.meta || {};
+      const total = typeof meta.total === 'number' ? meta.total : items.length;
+
+      if (items.length === 0) {
+        $s('empty-msg').textContent = `No results for "${q}". Try a different keyword or browse resources.`;
+        showState('empty');
+      } else {
+        // Render results
+        $s('result-list').innerHTML = items.map(renderResult).join('');
+
+        // Result count
+        $s('result-count').innerHTML =
+          `<strong>${total}</strong> result${total === 1 ? '' : 's'} for "<strong>${escHtml(q)}</strong>"`;
+
+        // Pagination
+        const totalPages = Math.ceil(total / PAGE_LIMIT);
+        if (totalPages > 1) {
+          $s('search-pagination').style.display = 'flex';
+          $s('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+          $s('btn-prev').disabled = currentPage <= 1;
+          $s('btn-next').disabled = currentPage >= totalPages;
+        } else {
+          $s('search-pagination').style.display = 'none';
+        }
+
+        showState('results');
+      }
+
+      updateClearBtn(q);
+    } catch (err) {
+      if (!err) return;
+      if (err.status === 401 || err.type === 'UNAUTHORIZED') {
+        showState('auth');
+        return;
+      }
+      $s('error-title').textContent = err.type === 'UNAVAILABLE' ? 'Search temporarily unavailable' : 'Search error';
+      $s('error-msg').textContent = err.message || 'An unexpected error occurred. Please try again.';
+      showState('error');
+      updateClearBtn(q);
+    }
+  }
+
+  window.retrySearch = function () { doSearch(currentQuery, currentPage); };
+  window.currentPage = currentPage;
+
+  window.goPage = function (p) {
+    if (p < 1) return;
+    currentPage = p;
+    window.currentPage = p;
+    pushState(currentQuery, p);
+    doSearch(currentQuery, p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ── Clear button ─────────────────────────────────────────────
+  function updateClearBtn(q) {
+    clearBtn.hidden = !(q && q.length > 0);
+  }
+
+  clearBtn.addEventListener('click', () => {
+    inputEl.value = '';
+    currentQuery = '';
+    pushState('', 1);
+    showState('initial');
+    updateClearBtn('');
+    closeAC();
+    inputEl.focus();
+    loadTrending();
+  });
+
+  // ── Autocomplete ─────────────────────────────────────────────
+  function renderAC(suggestions, query) {
+    if (!suggestions.length) { closeAC(); return; }
+    acItems = suggestions;
+    acIndex = -1;
+
+    const html = suggestions.map((s, i) => `
+      <button class="autocomplete-item"
+        role="option"
+        id="ac-item-${i}"
+        aria-selected="false"
+        data-query="${escHtml(s)}"
+        tabindex="-1">
+        <svg class="autocomplete-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        ${escHtml(s)}
+      </button>`).join('');
+
+    acDropdown.innerHTML = html;
+    acDropdown.classList.add('open');
+    acOpen = true;
+    combobox.setAttribute('aria-expanded', 'true');
+
+    // Click handlers
+    acDropdown.querySelectorAll('.autocomplete-item').forEach(btn => {
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault(); // prevent blur
+        const q = btn.dataset.query;
+        selectSuggestion(q);
+      });
+    });
+  }
+
+  function closeAC() {
+    acDropdown.classList.remove('open');
+    acDropdown.innerHTML = '';
+    acOpen = false;
+    acItems = [];
+    acIndex = -1;
+    combobox.setAttribute('aria-expanded', 'false');
+    inputEl.setAttribute('aria-activedescendant', '');
+  }
+
+  function setACIndex(idx) {
+    const btns = acDropdown.querySelectorAll('.autocomplete-item');
+    btns.forEach((b, i) => {
+      const active = i === idx;
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    acIndex = idx;
+    if (idx >= 0 && idx < btns.length) {
+      inputEl.setAttribute('aria-activedescendant', `ac-item-${idx}`);
+    } else {
+      inputEl.setAttribute('aria-activedescendant', '');
+    }
+  }
+
+  function selectSuggestion(q) {
+    inputEl.value = q;
+    closeAC();
+    pushState(q, 1);
+    doSearch(q, 1);
+  }
+
+  const debouncedAC = CampusX.search.debounce(async (q) => {
+    if (!q || q.length < 2) { closeAC(); return; }
+    try {
+      const suggestions = await guardedAC(q);
+      if (suggestions === null) return;
+      if (document.activeElement !== inputEl) return; // focus moved
+      renderAC(suggestions, q);
+    } catch (_) { closeAC(); }
+  }, 250);
+
+  // ── Search debounce (for typing → search) ────────────────────
+  const debouncedSearch = CampusX.search.debounce((q) => {
+    pushState(q, 1);
+    doSearch(q, 1);
+  }, 500);
+
+  // ── Input events ──────────────────────────────────────────────
+  inputEl.addEventListener('input', () => {
+    const q = inputEl.value.trim();
+    updateClearBtn(q);
+    if (!q) {
+      closeAC();
+      showState('initial');
+      currentQuery = '';
+      pushState('', 1);
+      loadTrending();
+      return;
+    }
+    debouncedAC(q);
+    debouncedSearch(q);
+  });
+
+  inputEl.addEventListener('keydown', e => {
+    if (!acOpen) {
+      if (e.key === 'Enter') {
+        const q = inputEl.value.trim();
+        if (q) { pushState(q, 1); doSearch(q, 1); }
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setACIndex(Math.min(acIndex + 1, acItems.length - 1));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setACIndex(Math.max(acIndex - 1, -1));
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (acIndex >= 0 && acItems[acIndex]) {
+          selectSuggestion(acItems[acIndex]);
+        } else {
+          const q = inputEl.value.trim();
+          closeAC();
+          if (q) { pushState(q, 1); doSearch(q, 1); }
+        }
+        break;
+      case 'Escape':
+        closeAC();
+        break;
+    }
+  });
+
+  inputEl.addEventListener('blur', () => {
+    // Short delay to allow mousedown on AC items to fire
+    setTimeout(closeAC, 150);
+  });
+
+  // Click outside AC
+  document.addEventListener('click', e => {
+    if (!combobox.contains(e.target)) closeAC();
+  });
+
+  // ── Trending ─────────────────────────────────────────────────
+  async function loadTrending() {
+    trendingPills.innerHTML = '';
+    try {
+      const topics = await CampusX.search.trending();
+      if (!topics.length) {
+        trendingSection.style.display = 'none';
+        return;
+      }
+      trendingSection.style.display = '';
+      trendingPills.innerHTML = topics.map(t => `
+        <button class="trending-pill" role="listitem"
+          aria-label="Search for ${escHtml(t.topic)}"
+          data-query="${escHtml(t.topic)}">
+          ${escHtml(t.topic)}
+          ${t.searches ? `<span class="trending-pill-count" aria-label="${t.searches} searches">${t.searches.toLocaleString()}</span>` : ''}
+        </button>
+      `).join('');
+      trendingPills.querySelectorAll('.trending-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const q = btn.dataset.query;
+          inputEl.value = q;
+          updateClearBtn(q);
+          pushState(q, 1);
+          doSearch(q, 1);
+        });
+      });
+    } catch (_) {
+      trendingSection.style.display = 'none';
+    }
+  }
+
+  // ── Browser back/forward ─────────────────────────────────────
+  window.addEventListener('popstate', (e) => {
+    const state = e.state || readState();
+    const q = state.q || '';
+    const page = state.page || 1;
+    inputEl.value = q;
+    updateClearBtn(q);
+    if (q) {
+      currentQuery = q;
+      currentPage = page;
+      doSearch(q, page);
+    } else {
+      showState('initial');
+      loadTrending();
+    }
+  });
+
+  // ── Initialise ────────────────────────────────────────────────
+  function init() {
+    const { q, page } = readState();
+    inputEl.value = q;
+    updateClearBtn(q);
+
+    if (q) {
+      currentQuery = q;
+      currentPage = page;
+      doSearch(q, page);
+    } else {
+      showState('initial');
+      loadTrending();
+    }
+  }
+
+  // Wait for search.js to be available (loaded via defer)
+  if (typeof CampusX.search !== 'undefined') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+})();
+</script>
 {% endblock %}

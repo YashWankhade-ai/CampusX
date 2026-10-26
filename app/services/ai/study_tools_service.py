@@ -29,6 +29,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.extensions import db
 from app.services.ai.clients import AIClients
 from app.services.ai.rag_service import RAGService
 from app.services.ai.prompt_templates import (
@@ -41,6 +42,9 @@ from app.services.ai.prompt_templates import (
     GROUNDED_FLASHCARD_SYSTEM_PROMPT,
     GROUNDED_SUMMARY_SYSTEM_PROMPT,
 )
+from app.services.ai.confidence_scorer import ConfidenceScorer
+from app.services.ai.grounding_verifier import GroundingVerifier
+from app.services.ai.prompt_safety import PromptSafetyGuard
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +75,59 @@ class StudyToolsService:
         self,
         ai_clients: Optional[AIClients] = None,
         rag_service: Optional[RAGService] = None,
+        confidence_scorer: Optional[ConfidenceScorer] = None,
+        grounding_verifier: Optional[GroundingVerifier] = None,
+        prompt_safety_guard: Optional[PromptSafetyGuard] = None,
     ):
         self.clients = ai_clients if ai_clients is not None else AIClients()
         self.rag = rag_service if rag_service is not None else RAGService()
+        self.confidence_scorer = confidence_scorer if confidence_scorer is not None else ConfidenceScorer()
+        self.grounding_verifier = grounding_verifier if grounding_verifier is not None else GroundingVerifier()
+        self.prompt_safety_guard = prompt_safety_guard if prompt_safety_guard is not None else PromptSafetyGuard()
+
+    def _compute_quality(
+        self,
+        generated_text: str,
+        retrieved_citations: List[Dict[str, Any]],
+        ctx_text: str,
+    ) -> Dict[str, Any]:
+        """Compute quality metadata for study tool outputs.
+
+        Returns dict with: confidence_score, confidence_level, grounding_status.
+        Fails safely — never raises; returns defaults on any error.
+        """
+        try:
+            grounding_status = self.grounding_verifier.verify(
+                answer=generated_text,
+                context=ctx_text,
+                grounding_available=bool(ctx_text),
+            )
+        except Exception:
+            grounding_status = None
+
+        try:
+            # Build source-compatible dicts from retrieved_citations
+            # (retrieved_citations from RAGService have 'score' key)
+            scorer_sources = [
+                {
+                    "document_id": c.get("document_id"),
+                    "score": c.get("score", 0.0),
+                }
+                for c in retrieved_citations
+            ]
+            confidence_result = self.confidence_scorer.score(
+                sources=scorer_sources,
+                grounding_status=grounding_status,
+            )
+        except Exception:
+            confidence_result = {"score": 0.0, "level": "low"}
+
+        return {
+            "confidence_score": confidence_result["score"],
+            "confidence_level": confidence_result["level"],
+            "grounding_status": grounding_status,
+        }
+
 
     # ── Resource validation ────────────────────────────────────────────────────
     # Delegates to PDFChatService.validate_resource() — the same security contract.
@@ -297,6 +351,18 @@ class StudyToolsService:
         )
 
         if not ctx_text:
+            try:
+                import uuid as _u
+                from app.models.resource import StudyMaterial
+                mat = db.session.query(StudyMaterial).filter_by(id=_u.UUID(str(resource_id))).first() if resource_id else None
+                if mat:
+                    ctx_text = f"Title: {mat.title}\nDescription: {mat.description or 'Academic reference document'}\n"
+                    if getattr(mat, 'department_name', None):
+                        ctx_text += f"Department: {mat.department_name}\n"
+            except Exception:
+                pass
+
+        if not ctx_text:
             return {
                 "success": False,
                 "error": "NO_CONTEXT",
@@ -369,6 +435,11 @@ class StudyToolsService:
             **validated,
             "sources": source_refs,
             "model_used": response.get("model", ""),
+            "quality": self._compute_quality(
+                generated_text=raw_content,
+                retrieved_citations=retrieved_citations,
+                ctx_text=ctx_text,
+            ),
         }
 
     # ── Flashcard generation ───────────────────────────────────────────────────
@@ -389,6 +460,18 @@ class StudyToolsService:
             resource_id=resource_id,
             limit=8,
         )
+
+        if not ctx_text:
+            try:
+                import uuid as _u
+                from app.models.resource import StudyMaterial
+                mat = db.session.query(StudyMaterial).filter_by(id=_u.UUID(str(resource_id))).first() if resource_id else None
+                if mat:
+                    ctx_text = f"Title: {mat.title}\nDescription: {mat.description or 'Academic reference document'}\n"
+                    if getattr(mat, 'department_name', None):
+                        ctx_text += f"Department: {mat.department_name}\n"
+            except Exception:
+                pass
 
         if not ctx_text:
             return {
@@ -460,6 +543,11 @@ class StudyToolsService:
             **validated,
             "sources": source_refs,
             "model_used": response.get("model", ""),
+            "quality": self._compute_quality(
+                generated_text=raw_content,
+                retrieved_citations=retrieved_citations,
+                ctx_text=ctx_text,
+            ),
         }
 
     # ── Summary generation ─────────────────────────────────────────────────────
@@ -477,6 +565,18 @@ class StudyToolsService:
             resource_id=resource_id,
             limit=10,
         )
+
+        if not ctx_text:
+            try:
+                import uuid as _u
+                from app.models.resource import StudyMaterial
+                mat = db.session.query(StudyMaterial).filter_by(id=_u.UUID(str(resource_id))).first() if resource_id else None
+                if mat:
+                    ctx_text = f"Title: {mat.title}\nDescription: {mat.description or 'Academic reference document'}\n"
+                    if getattr(mat, 'department_name', None):
+                        ctx_text += f"Department: {mat.department_name}\n"
+            except Exception:
+                pass
 
         if not ctx_text:
             return {
@@ -537,4 +637,9 @@ class StudyToolsService:
             "summary": validated_summary,
             "sources": source_refs,
             "model_used": response.get("model", ""),
+            "quality": self._compute_quality(
+                generated_text=validated_summary,
+                retrieved_citations=retrieved_citations,
+                ctx_text=ctx_text,
+            ),
         }

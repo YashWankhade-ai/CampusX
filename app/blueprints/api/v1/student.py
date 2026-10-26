@@ -56,6 +56,25 @@ def get_student_profile():
     return success_response(data=profile)
 
 
+@student_bp.route('/profile', methods=['PUT'])
+@require_auth
+@require_permission('enrollment:read')
+def update_student_profile():
+    """Update editable student profile fields."""
+    from app.services.user_service import UserService
+    user_svc = UserService()
+    data = request.get_json(silent=True) or {}
+    allowed = ('full_name', 'display_name', 'avatar_url', 'timezone', 'locale', 'phone', 'bio', 'location')
+    updated = user_svc.update_user_profile(
+        request.user.id,
+        **{k: v for k, v in data.items() if k in allowed}
+    )
+    if not updated:
+        return error_response(code="NOT_FOUND", message="Student not found", status_code=404)
+    profile = _svc.get_student_profile(student_user_id=str(request.user.id))
+    return success_response(data=profile, message="Profile updated successfully")
+
+
 # ── Dashboard ──────────────────────────────────────────────────────────────────
 
 @student_bp.route('/dashboard', methods=['GET'])

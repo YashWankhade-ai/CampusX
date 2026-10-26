@@ -28,7 +28,16 @@ def create_app(config_name=None):
     # Initialize database extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    cors.init_app(app, resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS", "*")}})
+    
+    # Configure CORS for Vercel, Hugging Face, and custom domains
+    cors_origins = app.config.get("CORS_ORIGINS", ["*"])
+    if isinstance(cors_origins, str):
+        cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    cors.init_app(
+        app,
+        resources={r"/api/*": {"origins": cors_origins if cors_origins else "*"}},
+        supports_credentials=True
+    )
 
     # Session Lifecycle Management: Teardown database session on request end
     @app.teardown_appcontext
@@ -88,13 +97,18 @@ def create_app(config_name=None):
     # Global Error Handlers
     @app.errorhandler(404)
     def not_found_error(error):
-        return jsonify({
-            "success": False,
-            "error": {
-                "code": "NOT_FOUND",
-                "message": "The requested resource or endpoint was not found."
-            }
-        }), 404
+        from flask import request as _req, render_template as _rt
+        # Return HTML for browser requests, JSON for API/AJAX requests
+        if _req.path.startswith('/api/') or \
+           _req.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json':
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "The requested resource or endpoint was not found."
+                }
+            }), 404
+        return _rt("errors/404.html"), 404
 
     @app.errorhandler(500)
     def internal_error(error):

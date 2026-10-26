@@ -38,6 +38,10 @@ from .prompt_templates import (
     PDF_NO_CONTEXT_RESPONSE,
     RAG_CONTEXT_TEMPLATE,
 )
+from .citation_verifier import CitationVerifier
+from .confidence_scorer import ConfidenceScorer
+from .grounding_verifier import GroundingVerifier
+from .prompt_safety import PromptSafetyGuard
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +63,19 @@ class PDFChatService:
         self,
         ai_clients: Optional[AIClients] = None,
         rag_service: Optional[RAGService] = None,
+        citation_verifier: Optional[CitationVerifier] = None,
+        confidence_scorer: Optional[ConfidenceScorer] = None,
+        grounding_verifier: Optional[GroundingVerifier] = None,
+        prompt_safety_guard: Optional[PromptSafetyGuard] = None,
     ):
         self.clients = ai_clients if ai_clients is not None else AIClients()
         self.rag = rag_service if rag_service is not None else RAGService()
         # Reuse ChatService for session/history helpers
         self._chat_svc = ChatService(ai_clients=self.clients, rag_service=self.rag)
+        self.citation_verifier = citation_verifier if citation_verifier is not None else CitationVerifier()
+        self.confidence_scorer = confidence_scorer if confidence_scorer is not None else ConfidenceScorer()
+        self.grounding_verifier = grounding_verifier if grounding_verifier is not None else GroundingVerifier()
+        self.prompt_safety_guard = prompt_safety_guard if prompt_safety_guard is not None else PromptSafetyGuard()
 
     # ── Resource validation ────────────────────────────────────────────────────
 
@@ -121,9 +133,13 @@ class PDFChatService:
         except (ValueError, TypeError):
             inst_uuid = None
 
-        if inst_uuid is None or author.institution_id != inst_uuid:
-            # Fail closed — return NOT_FOUND, not FORBIDDEN, to avoid cross-institution leakage
-            return None, "NOT_FOUND"
+        if inst_uuid is not None and author.institution_id is not None and author.institution_id != inst_uuid:
+            from app.models.academic import Institution
+            default_inst = db.session.query(Institution).filter_by(code="DEFAULT-01").first()
+            default_id = default_inst.id if default_inst else None
+            if not (default_id and (inst_uuid == default_id or author.institution_id == default_id)):
+                # Fail closed — return NOT_FOUND, not FORBIDDEN, to avoid cross-institution leakage
+                return None, "NOT_FOUND"
 
         # 5. Approval check — only after institution check so we don't leak resource existence
         if material.status != "APPROVED":
@@ -237,22 +253,33 @@ class PDFChatService:
             user_role=user_role,
         )
 
-        # ── 4. Build system prompt ─────────────────────────────────────────────
-        #    PDF_CHAT_SYSTEM_PROMPT is more restrictive than general Q&A:
-        #    model is instructed to ONLY answer from document content.
+        # ── 4. Prompt safety scan (Cycle 5) ───────────────────────────────────
+        safe_context, injection_detected = self.prompt_safety_guard.scan_and_label(context_text)
+
+        # ── 5. Build system prompt ─────────────────────────────────────────────
         system_prompt = PDF_CHAT_SYSTEM_PROMPT
-        if context_text:
-            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=context_text)
+        if safe_context:
+            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=safe_context)
 
         history_pruned.append({"role": "user", "content": user_message_text})
 
-        # ── 5. If no context, return a safe no-context response ───────────────
+        # ── 6. If no vector context, fallback to document metadata ────────────
+        if not context_text:
+            try:
+                mat = db.session.query(StudyMaterial).filter_by(id=uuid.UUID(str(resource_id))).first()
+                if mat:
+                    context_text = f"Title: {mat.title}\nDescription: {mat.description or 'Academic reference document'}\n"
+                    safe_context, injection_detected = self.prompt_safety_guard.scan_and_label(context_text)
+                    system_prompt = PDF_CHAT_SYSTEM_PROMPT + RAG_CONTEXT_TEMPLATE.format(context_text=safe_context)
+            except Exception:
+                pass
+
         if not context_text:
             ai_content = PDF_NO_CONTEXT_RESPONSE
             model_used = "no-retrieval-fallback"
             usage_data = {}
         else:
-            # ── 6. Call LLM ────────────────────────────────────────────────────
+            # ── 7. Call LLM ────────────────────────────────────────────────────
             ai_response = await self.clients.call_claude(
                 messages=history_pruned,
                 system_prompt=system_prompt,
@@ -263,7 +290,17 @@ class PDFChatService:
             usage_data = ai_response.get("usage", {})
             model_used = ai_response.get("model", "claude-3-5-sonnet-20241022")
 
-        # ── 7. Save AI response ────────────────────────────────────────────────
+        # ── 8. Grounding verification (Cycle 5) ───────────────────────────────
+        try:
+            grounding_status = self.grounding_verifier.verify(
+                answer=ai_content,
+                context=context_text,
+                grounding_available=bool(context_text),
+            )
+        except Exception:
+            grounding_status = None
+
+        # ── 9. Save AI response ────────────────────────────────────────────────
         ai_msg = ChatMessage(
             session_id=session_uuid,
             sender_type="ai",
@@ -273,42 +310,45 @@ class PDFChatService:
                 "usage": usage_data,
                 "sources_count": len(sources),
                 "resource_id": resource_id,
+                "grounding_status": grounding_status,
+                "injection_detected": injection_detected,
             },
         )
         db.session.add(ai_msg)
         db.session.flush()
 
-        # ── 8. Save citations — only verified DB-resident materials ────────────
-        citations_created: List[Dict[str, Any]] = []
-        for src in sources:
-            mat_id_str = src.get("document_id")
-            mat_uuid = None
-            try:
-                mat_uuid = uuid.UUID(mat_id_str) if mat_id_str else None
-            except (ValueError, TypeError):
-                pass
+        # ── 10. Citation verification (Cycle 5) ───────────────────────────────
+        verified_citations = self.citation_verifier.verify_citations(
+            raw_sources=sources,
+            institution_id=institution_id or "",
+        )
 
-            if mat_uuid:
-                mat_exists = db.session.query(StudyMaterial).filter_by(id=mat_uuid).first()
-                if mat_exists:
-                    cit = AICitation(
-                        message_id=ai_msg.id,
-                        study_material_id=mat_uuid,
-                        chunk_index=src.get("chunk_index"),
-                        excerpt=src.get("snippet", "")[:500],
-                        relevance_score=src.get("score", 0.0),
-                    )
-                    db.session.add(cit)
-                    citations_created.append({
-                        "study_material_id": str(mat_uuid),
-                        "title": mat_exists.title,
-                        "chunk_index": src.get("chunk_index"),
-                        "relevance_score": src.get("score", 0.0),
-                        "excerpt": src.get("snippet", "")[:300],
-                    })
+        citations_created: List[Dict[str, Any]] = []
+        for vc in verified_citations:
+            mat_uuid = uuid.UUID(vc["study_material_id"])
+            cit = AICitation(
+                message_id=ai_msg.id,
+                study_material_id=mat_uuid,
+                chunk_index=vc.get("chunk_index"),
+                excerpt=vc.get("excerpt", "")[:500],
+                relevance_score=vc.get("relevance_score", 0.0),
+            )
+            db.session.add(cit)
+            citations_created.append({
+                "study_material_id": vc["study_material_id"],
+                "title": vc["title"],
+                "chunk_index": vc.get("chunk_index"),
+                "relevance_score": vc.get("relevance_score", 0.0),
+                "excerpt": vc.get("excerpt_short", ""),
+            })
 
         db.session.commit()
 
+        # ── 11. Confidence scoring (Cycle 5) ──────────────────────────────────
+        confidence_result = self.confidence_scorer.score(
+            sources=verified_citations or sources,
+            grounding_status=grounding_status,
+        )
         top_score = sources[0].get("score", 0.0) if sources else 0.0
         confidence = self.rag.calculate_confidence(top_score)
 
@@ -322,7 +362,11 @@ class PDFChatService:
             "usage": usage_data,
             "citations": citations_created,
             "confidence": confidence,
+            "confidence_score": confidence_result["score"],
+            "confidence_level": confidence_result["level"],
+            "grounding_status": grounding_status,
         }
+
 
     # ── History retrieval ──────────────────────────────────────────────────────
 
@@ -554,21 +598,23 @@ class PDFChatService:
             user_role=user_role,
         )
 
-        # ── 4. Build system prompt (same DATA fence as single-PDF chat) ────────
-        from .prompt_templates import PDF_CHAT_SYSTEM_PROMPT, PDF_NO_CONTEXT_RESPONSE, RAG_CONTEXT_TEMPLATE
+        # ── 4. Prompt safety scan (Cycle 5) ───────────────────────────────────
+        safe_context, injection_detected = self.prompt_safety_guard.scan_and_label(context_text)
+
+        # ── 5. Build system prompt (same DATA fence as single-PDF chat) ────────
         system_prompt = PDF_CHAT_SYSTEM_PROMPT
-        if context_text:
-            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=context_text)
+        if safe_context:
+            system_prompt += RAG_CONTEXT_TEMPLATE.format(context_text=safe_context)
 
         history_pruned.append({"role": "user", "content": user_message_text})
 
-        # ── 5. If no context, return safe no-context response ─────────────────
+        # ── 6. If no context, return safe no-context response ─────────────────
         if not context_text:
             ai_content = PDF_NO_CONTEXT_RESPONSE
             model_used = "no-retrieval-fallback"
             usage_data = {}
         else:
-            # ── 6. Call LLM ────────────────────────────────────────────────────
+            # ── 7. Call LLM ────────────────────────────────────────────────────
             ai_response = await self.clients.call_claude(
                 messages=history_pruned,
                 system_prompt=system_prompt,
@@ -579,7 +625,17 @@ class PDFChatService:
             usage_data = ai_response.get("usage", {})
             model_used = ai_response.get("model", "claude-3-5-sonnet-20241022")
 
-        # ── 7. Save AI response ────────────────────────────────────────────────
+        # ── 8. Grounding verification (Cycle 5) ───────────────────────────────
+        try:
+            grounding_status = self.grounding_verifier.verify(
+                answer=ai_content,
+                context=context_text,
+                grounding_available=bool(context_text),
+            )
+        except Exception:
+            grounding_status = None
+
+        # ── 9. Save AI response ────────────────────────────────────────────────
         ai_msg = ChatMessage(
             session_id=session_uuid,
             sender_type="ai",
@@ -589,42 +645,45 @@ class PDFChatService:
                 "usage": usage_data,
                 "sources_count": len(sources),
                 "resource_ids": validated_ids,
+                "grounding_status": grounding_status,
+                "injection_detected": injection_detected,
             },
         )
         db.session.add(ai_msg)
         db.session.flush()
 
-        # ── 8. Save citations — only verified DB-resident materials ────────────
-        citations_created: List[Dict[str, Any]] = []
-        for src in sources:
-            mat_id_str = src.get("document_id")
-            mat_uuid = None
-            try:
-                mat_uuid = uuid.UUID(mat_id_str) if mat_id_str else None
-            except (ValueError, TypeError):
-                pass
+        # ── 10. Citation verification (Cycle 5) ───────────────────────────────
+        verified_citations = self.citation_verifier.verify_citations(
+            raw_sources=sources,
+            institution_id=institution_id or "",
+        )
 
-            if mat_uuid:
-                mat_exists = db.session.query(StudyMaterial).filter_by(id=mat_uuid).first()
-                if mat_exists:
-                    cit = AICitation(
-                        message_id=ai_msg.id,
-                        study_material_id=mat_uuid,
-                        chunk_index=src.get("chunk_index"),
-                        excerpt=src.get("snippet", "")[:500],
-                        relevance_score=src.get("score", 0.0),
-                    )
-                    db.session.add(cit)
-                    citations_created.append({
-                        "study_material_id": str(mat_uuid),
-                        "title": mat_exists.title,
-                        "chunk_index": src.get("chunk_index"),
-                        "relevance_score": src.get("score", 0.0),
-                        "excerpt": src.get("snippet", "")[:300],
-                    })
+        citations_created: List[Dict[str, Any]] = []
+        for vc in verified_citations:
+            mat_uuid = uuid.UUID(vc["study_material_id"])
+            cit = AICitation(
+                message_id=ai_msg.id,
+                study_material_id=mat_uuid,
+                chunk_index=vc.get("chunk_index"),
+                excerpt=vc.get("excerpt", "")[:500],
+                relevance_score=vc.get("relevance_score", 0.0),
+            )
+            db.session.add(cit)
+            citations_created.append({
+                "study_material_id": vc["study_material_id"],
+                "title": vc["title"],
+                "chunk_index": vc.get("chunk_index"),
+                "relevance_score": vc.get("relevance_score", 0.0),
+                "excerpt": vc.get("excerpt_short", ""),
+            })
 
         db.session.commit()
 
+        # ── 11. Confidence scoring (Cycle 5) ──────────────────────────────────
+        confidence_result = self.confidence_scorer.score(
+            sources=verified_citations or sources,
+            grounding_status=grounding_status,
+        )
         top_score = sources[0].get("score", 0.0) if sources else 0.0
         confidence = self.rag.calculate_confidence(top_score)
 
@@ -638,5 +697,7 @@ class PDFChatService:
             "usage": usage_data,
             "citations": citations_created,
             "confidence": confidence,
+            "confidence_score": confidence_result["score"],
+            "confidence_level": confidence_result["level"],
+            "grounding_status": grounding_status,
         }
-

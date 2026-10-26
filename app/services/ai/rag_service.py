@@ -159,7 +159,15 @@ class RAGService:
             if institution_id:
                 try:
                     inst_uuid = uuid.UUID(str(institution_id))
-                    db_query = db_query.filter(User.institution_id == inst_uuid)
+                    from app.models.academic import Institution
+                    default_inst = Institution.query.filter_by(code='DEFAULT-01').first()
+                    default_id = default_inst.id if default_inst else None
+                    if default_id:
+                        db_query = db_query.filter(
+                            (User.institution_id == inst_uuid) | (User.institution_id == default_id) | (User.institution_id == None)
+                        )
+                    else:
+                        db_query = db_query.filter(User.institution_id == inst_uuid)
                 except (ValueError, TypeError):
                     logger.warning(
                         "[RAG] Invalid institution_id format — BM25 corpus empty (fail closed)"
@@ -197,15 +205,23 @@ class RAGService:
                     pass
 
             db_materials = db_query.limit(_BM25_CORPUS_LIMIT).all()
-            sparse_docs = [
-                {
+            sparse_docs = []
+            for m in db_materials:
+                # Include extracted text from PDF/document content if available
+                full_text = f"{m.title}\n{m.description or ''}"
+                try:
+                    from .document_processor import DocumentProcessor
+                    pdf_text = DocumentProcessor.extract_text_for_material(m)
+                    if pdf_text:
+                        full_text = f"{full_text}\n{pdf_text[:4000]}"
+                except Exception:
+                    pass
+                sparse_docs.append({
                     "document_id": str(m.id),
                     "title": m.title,
-                    "text": f"{m.title}\n{m.description or ''}",
+                    "text": full_text,
                     "chunk_index": 0,
-                }
-                for m in db_materials
-            ]
+                })
         except Exception as exc:
             logger.warning("[RAG] BM25 corpus retrieval notice: %s", type(exc).__name__)
 

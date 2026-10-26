@@ -1,0 +1,342 @@
+{% set active_page = "resources" %}
+{% extends "base.html" %}
+
+{% block title %}Resource — CampusX{% endblock %}
+{% block topbar_title %}Resource{% endblock %}
+
+{% block head_extra %}
+{% endblock %}
+
+{% block sidebar %}{% include "student/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item"><a href="{{ request.referrer if request.referrer and '/search' in request.referrer else '/student/resources' }}"
+    id="back-link">Resources</a></li>
+  <li class="breadcrumb-item active" aria-current="page" id="bc-title">Loading…</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- ── Loading skeleton ───────────────────────────────────────── -->
+  <div id="rdetail-loading" aria-label="Loading resource" aria-live="polite">
+    <div class="resource-detail-header">
+      <div class="skeleton" style="width:56px;height:56px;border-radius:var(--cx-radius-md);flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div class="skeleton" style="height:12px;width:30%;margin-bottom:var(--cx-space-3);"></div>
+        <div class="skeleton skeleton-title" style="width:65%;"></div>
+        <div class="skeleton skeleton-text wide"></div>
+        <div class="skeleton skeleton-text med"></div>
+      </div>
+    </div>
+    <div class="resource-action-row">
+      <div class="skeleton" style="width:130px;height:38px;border-radius:var(--cx-radius-sm);"></div>
+      <div class="skeleton" style="width:100px;height:38px;border-radius:var(--cx-radius-sm);"></div>
+    </div>
+    <div class="resource-meta-grid">
+      {% for _ in range(4) %}
+      <div class="resource-meta-cell">
+        <div class="skeleton skeleton-text short"></div>
+        <div class="skeleton skeleton-text med"></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Content ────────────────────────────────────────────────── -->
+  <div id="rdetail-content" style="display:none;">
+
+    <!-- Header card -->
+    <div class="resource-detail-header" id="rdetail-header">
+      <div class="resource-detail-icon" id="rdetail-icon" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="resource-detail-header-body">
+        <div class="resource-detail-type-row">
+          <span class="badge" id="rdetail-type-badge"></span>
+          <span class="badge badge-success" id="rdetail-status-badge" style="display:none;"></span>
+        </div>
+        <h1 class="resource-detail-title" id="rdetail-title"></h1>
+        <p class="resource-detail-desc" id="rdetail-desc"></p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="resource-action-row" id="rdetail-actions">
+      <a class="btn btn-primary" id="rdetail-view-btn" href="#" target="_blank" aria-label="Open and view resource online" style="background:#1E5034;color:#FFFFFF;display:inline-flex;align-items:center;gap:6px;font-weight:700;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span>Open / View Online</span>
+      </a>
+      <button class="btn btn-secondary" id="rdetail-download-btn" aria-label="Download resource">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download
+      </button>
+      <button class="btn btn-secondary" id="rdetail-bookmark-btn" aria-label="Bookmark resource">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+        </svg>
+        Bookmark
+      </button>
+      <a class="btn btn-ghost" id="rdetail-back" href="/student/resources">← Back</a>
+    </div>
+
+    <!-- Metadata cells -->
+    <section aria-label="Resource details">
+      <h2 style="font-size:var(--cx-text-label);font-weight:var(--cx-weight-semibold);letter-spacing:var(--cx-tracking-wider);text-transform:uppercase;color:var(--cx-text-muted);margin-bottom:var(--cx-space-4);">
+        Resource details
+      </h2>
+      <div class="resource-meta-grid" id="rdetail-meta-grid"></div>
+    </section>
+
+    <!-- Online Document Reader Section -->
+    <section id="rdetail-viewer-section" aria-label="Online Document Reader" style="margin-top:var(--cx-space-6);background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E5034" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <h2 style="margin:0;font-size:16px;font-weight:700;color:#0F172A;">Online Document Reader</h2>
+        </div>
+        <div>
+          <a id="rdetail-fullscreen-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+            Full Window View
+          </a>
+        </div>
+      </div>
+      <div id="rdetail-viewer-frame-container" style="width:100%;height:680px;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;background:#F8FAFC;">
+        <iframe id="rdetail-viewer-iframe" style="width:100%;height:100%;border:none;" title="Online Document Viewer"></iframe>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ── Not found ──────────────────────────────────────────────── -->
+  <div id="rdetail-notfound" style="display:none;" class="search-state" role="alert">
+    <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>
+    <div class="search-state-title">Resource not found</div>
+    <p class="search-state-body">This resource may have been removed, or you don't have access to it.</p>
+    <div style="display:flex;gap:var(--cx-space-3);justify-content:center;flex-wrap:wrap;">
+      <a href="/student/resources" class="btn btn-primary">Browse Resources</a>
+      <a href="/student/search" class="btn btn-secondary">Search</a>
+    </div>
+  </div>
+
+  <!-- ── Auth error ─────────────────────────────────────────────── -->
+  <div id="rdetail-auth" style="display:none;" class="search-state" role="alert">
+    <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+    </svg>
+    <div class="search-state-title">Session expired</div>
+    <p class="search-state-body">Please log in again to view this resource.</p>
+    <a href="/login?next={{ request.path }}" class="btn btn-primary">Log in</a>
+  </div>
+
+  <!-- ── Network / server error ─────────────────────────────────── -->
+  <div id="rdetail-error" style="display:none;" class="search-state" role="alert">
+    <svg class="search-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <div class="search-state-title" id="rdetail-error-title">Could not load resource</div>
+    <p class="search-state-body" id="rdetail-error-msg"></p>
+    <button class="btn btn-primary" onclick="loadResource()">Retry</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/search.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=' + encodeURIComponent(window.location.pathname));
+    return;
+  }
+
+  // Extract resource ID from URL: /student/resources/<id>
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const resourceId = parts[parts.length - 1];
+  if (!resourceId || resourceId === 'resources') {
+    window.location.replace('/student/resources');
+    return;
+  }
+
+  // Update breadcrumb back link based on referrer
+  const ref = document.referrer;
+  const backLink = document.getElementById('rdetail-back');
+  const backBc = document.getElementById('back-link');
+  if (ref && ref.includes('/student/search')) {
+    if (backLink) backLink.href = ref;
+    if (backBc) { backBc.textContent = 'Search results'; backBc.href = ref; }
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function typeColor(type) {
+    const t = (type || '').toUpperCase();
+    if (t === 'NOTE' || t === 'NOTES')          return { bg: 'rgba(36,72,58,0.10)',  fg: 'var(--cx-color-forest)' };
+    if (t === 'QUESTION_PAPER' || t === 'EXAM') return { bg: 'rgba(184,92,56,0.10)', fg: 'var(--cx-color-terracotta)' };
+    if (t === 'REFERENCE' || t === 'BOOK')      return { bg: 'rgba(196,154,69,0.12)', fg: '#7a5a10' };
+    return { bg: 'rgba(97,116,90,0.10)', fg: 'var(--cx-color-moss)' };
+  }
+
+  function metaCell(label, value) {
+    if (!value && value !== 0) return '';
+    return `
+      <div class="resource-meta-cell">
+        <div class="resource-meta-label">${escHtml(label)}</div>
+        <div class="resource-meta-value">${escHtml(String(value))}</div>
+      </div>`;
+  }
+
+  function showState(name) {
+    ['loading','content','notfound','auth','error'].forEach(n => {
+      const el = document.getElementById('rdetail-' + n);
+      if (el) el.style.display = n === name ? '' : 'none';
+    });
+  }
+
+  async function loadResource() {
+    showState('loading');
+    try {
+      const r = await CampusX.search.resource(resourceId);
+
+      // Update breadcrumb
+      const bcTitle = document.getElementById('bc-title');
+      if (bcTitle) bcTitle.textContent = r.title || 'Resource';
+      document.title = (r.title || 'Resource') + ' — CampusX';
+
+      // Icon + type badge
+      const rawType = r.material_type || r.resource_type || r.type || '';
+      const typeLabel = rawType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) || 'Resource';
+      const c = typeColor(rawType);
+
+      const iconEl = document.getElementById('rdetail-icon');
+      iconEl.style.background = c.bg;
+      iconEl.querySelector('svg').style.stroke = c.fg;
+
+      document.getElementById('rdetail-type-badge').textContent = typeLabel;
+
+      const statusBadge = document.getElementById('rdetail-status-badge');
+      if (r.status && r.status !== 'APPROVED') {
+        statusBadge.textContent = r.status;
+        statusBadge.style.display = '';
+      }
+
+      // Title + description
+      document.getElementById('rdetail-title').textContent = r.title || 'Untitled';
+      const descEl = document.getElementById('rdetail-desc');
+      if (r.description) {
+        descEl.textContent = r.description;
+      } else {
+        descEl.style.display = 'none';
+      }
+
+      // Meta grid
+      // Build metadata cells from verified response fields.
+      const metaItems = [
+        metaCell('Faculty / Teacher', r.faculty_name || 'Faculty Instructor'),
+        metaCell('Department / Branch', r.department_name || 'General Engineering'),
+        metaCell('Subject / Course', r.subject_name || r.subject_code || 'General'),
+        metaCell('Type', typeLabel),
+        metaCell('Status', r.status),
+        metaCell('Published', r.created_at ? new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null),
+        metaCell('Updated', r.updated_at ? new Date(r.updated_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : null),
+      ].filter(Boolean);
+
+      document.getElementById('rdetail-meta-grid').innerHTML = metaItems.join('');
+
+      // Wire in-browser preview endpoints
+      const viewUrl = '/api/v1/resources/' + resourceId + '/view';
+      const viewBtn = document.getElementById('rdetail-view-btn');
+      if (viewBtn) viewBtn.href = viewUrl;
+      const fsLink = document.getElementById('rdetail-fullscreen-link');
+      if (fsLink) fsLink.href = viewUrl;
+      const iframe = document.getElementById('rdetail-viewer-iframe');
+      if (iframe) iframe.src = viewUrl;
+
+      showState('content');
+
+    } catch (err) {
+      if (!err) { showState('error'); return; }
+      if (err.status === 401 || err.type === 'UNAUTHORIZED') { showState('auth'); return; }
+      if (err.status === 404 || err.status === 403) { showState('notfound'); return; }
+      document.getElementById('rdetail-error-title').textContent = 'Could not load resource';
+      document.getElementById('rdetail-error-msg').textContent = err.message || 'A network error occurred. Please try again.';
+      showState('error');
+    }
+  }
+
+  // ── Download action ──────────────────────────────────────────
+  document.getElementById('rdetail-download-btn').addEventListener('click', async function () {
+    const btn = this;
+    btn.disabled = true;
+    const origHTML = btn.innerHTML;
+    btn.textContent = 'Downloading…';
+    try {
+      const url = await CampusX.search.download(resourceId);
+      const a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', '');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      const msg = (err && err.status === 404) ? 'File not found.' :
+                  (err && err.status === 403) ? 'Access denied.' :
+                  (err && err.message) ? err.message : 'Download unavailable.';
+      CampusX.toast(msg, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHTML;
+    }
+  });
+
+  // ── Bookmark action ──────────────────────────────────────────
+  document.getElementById('rdetail-bookmark-btn').addEventListener('click', async function () {
+    const btn = this;
+    btn.disabled = true;
+    try {
+      await CampusX.search.bookmark(resourceId);
+      CampusX.toast('Bookmark updated', 'success');
+    } catch (err) {
+      CampusX.toast((err && err.message) || 'Could not update bookmark.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  window.loadResource = loadResource;
+
+  // Wait for search.js to be available (defer)
+  if (typeof CampusX.search !== 'undefined') {
+    loadResource();
+  } else {
+    document.addEventListener('DOMContentLoaded', loadResource);
+  }
+})();
+</script>
+{% endblock %}

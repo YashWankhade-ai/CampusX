@@ -28,7 +28,7 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models.user import User
-from app.models.academic import Institution, Department
+from app.models.academic import Institution, Department, Program
 from app.models.enrollment import StudentEnrollment, CourseEnrollment
 from app.models.contribution import UserContribution
 from app.models.notification import Notification
@@ -102,6 +102,61 @@ class StudentService:
             if dept:
                 department_name = dept.name
 
+        meta = user.metadata_json or {}
+        bio = user.profile.bio if user.profile and user.profile.bio else meta.get("bio")
+
+        # Real DB counts for student activity
+        courses_enrolled = db.session.query(
+            func.count(CourseEnrollment.id)
+        ).filter(
+            CourseEnrollment.student_id == uid,
+            CourseEnrollment.is_deleted == False,
+        ).scalar() or 0
+
+        from app.models.resource import StudyMaterial
+        resources_contributed = db.session.query(
+            func.count(StudyMaterial.id)
+        ).filter(
+            StudyMaterial.author_id == uid,
+            StudyMaterial.is_deleted == False,
+        ).scalar() or 0
+
+        approved_contributions = db.session.query(
+            func.count(StudyMaterial.id)
+        ).filter(
+            StudyMaterial.author_id == uid,
+            StudyMaterial.status == "APPROVED",
+            StudyMaterial.is_deleted == False,
+        ).scalar() or 0
+
+        unread_notifications = db.session.query(
+            func.count(Notification.id)
+        ).filter(
+            Notification.recipient_id == uid,
+            Notification.is_read == False,
+            Notification.is_deleted == False,
+        ).scalar() or 0
+
+        enrollment = db.session.query(StudentEnrollment).filter(
+            StudentEnrollment.user_id == uid,
+            StudentEnrollment.is_deleted == False,
+        ).first()
+        program_name = None
+        if enrollment and hasattr(enrollment, 'program') and enrollment.program:
+            program_name = enrollment.program.name
+        elif user.department_id:
+            dept_prog = db.session.query(Program).filter(Program.department_id == user.department_id).first()
+            if dept_prog:
+                program_name = dept_prog.name
+        if not program_name:
+            program_name = "Computer Science"
+
+        student_id_val = meta.get("student_id") or meta.get("institutional_id") or meta.get("enrollment_id")
+        if not student_id_val:
+            from app.utils.academic_utils import get_branch_code
+            b_code = meta.get("branch_code") or get_branch_code(department_name or "Computer Science")
+            student_id_val = f"STU-{b_code}-2026-001"
+
         return {
             "id": str(user.id),
             "email": user.email,
@@ -112,9 +167,24 @@ class StudentService:
             "status": user.status,
             "timezone": user.timezone,
             "locale": user.locale,
+            "phone": meta.get("phone"),
+            "date_of_birth": meta.get("date_of_birth"),
+            "gender": meta.get("gender"),
+            "location": meta.get("location") or (f"{inst.city}, {inst.country}" if inst and inst.city else None),
+            "bio": bio,
             "department_name": department_name,
+            "program_name": program_name,
+            "student_id": student_id_val,
+            "institutional_id": meta.get("institutional_id") or student_id_val,
+            "branch_code": meta.get("branch_code"),
             "institution_id": str(user.institution_id) if user.institution_id else None,
             "institution": institution_data,
+            "activity": {
+                "courses_enrolled": courses_enrolled,
+                "resources_contributed": resources_contributed,
+                "approved_contributions": approved_contributions,
+                "unread_notifications": unread_notifications,
+            },
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
         }

@@ -34,6 +34,24 @@ def verify_email():
 
     return success_response(data=result, status_code=status_code)
 
+@auth_bp.route("/resend-otp", methods=["POST"], strict_slashes=False)
+def resend_otp():
+    """
+    Public Endpoint: POST /api/v1/auth/resend-otp
+    Accepts JSON body: {"email": "..."}
+    """
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "").strip()
+
+    if not email:
+        return error_response(code="VALIDATION_ERROR", message="Email is required", status_code=400)
+
+    success, result, status_code = auth_service.resend_otp(email=email)
+    if not success:
+        return error_response(code=result.get("code", "ERROR"), message=result.get("message", "Failed to resend code"), status_code=status_code)
+
+    return success_response(data=result, status_code=status_code)
+
 @auth_bp.route("/login", methods=["POST"], strict_slashes=False)
 def login():
     """

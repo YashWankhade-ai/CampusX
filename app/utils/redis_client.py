@@ -37,11 +37,20 @@ class InMemoryRedis:
 _in_memory_redis = InMemoryRedis()
 
 def get_redis_client():
+    try:
+        from flask import current_app
+        if current_app and current_app.config.get("TESTING"):
+            return _in_memory_redis
+    except Exception:
+        pass
+
     redis_url = os.environ.get("REDIS_URL")
     if redis_url:
         try:
             import redis
-            return redis.Redis.from_url(redis_url, decode_responses=True)
+            r = redis.Redis.from_url(redis_url, socket_connect_timeout=0.5, socket_timeout=0.5, decode_responses=True)
+            r.ping()
+            return r
         except Exception:
             pass
     return _in_memory_redis

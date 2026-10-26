@@ -58,13 +58,25 @@ except ImportError:
             return decorator
 
 
+import sys
+
 redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 celery = Celery("campusx_tasks", broker=redis_url, backend=redis_url)
 if hasattr(celery, "conf") and hasattr(celery.conf, "update"):
+    is_testing = os.environ.get("FLASK_ENV") == "testing" or os.environ.get("TESTING") == "true" or "pytest" in sys.modules
     celery.conf.update(
         task_serializer="json",
         accept_content=["json"],
         result_serializer="json",
         timezone="UTC",
         enable_utc=True,
+        task_always_eager=is_testing,
+        task_eager_propagates=is_testing,
+        broker_connection_retry_on_startup=False,
+        broker_connection_timeout=1.0,
     )
+    if is_testing:
+        celery.conf.update(
+            broker_url="memory://",
+            result_backend="cache+memory://",
+        )

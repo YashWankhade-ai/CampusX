@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — CampusX</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <style>
+    body {
+      background: var(--cx-bg-page);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: var(--cx-font-sans);
+    }
+    .error-container {
+      max-width: 480px;
+      width: 100%;
+      padding: var(--cx-space-8) var(--cx-space-6);
+      text-align: center;
+    }
+    .error-wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--cx-space-2);
+      font-family: var(--cx-font-serif);
+      font-weight: var(--cx-weight-semibold);
+      font-size: 1.25rem;
+      color: var(--cx-color-forest);
+      text-decoration: none;
+      margin-bottom: var(--cx-space-8);
+    }
+    .error-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--cx-color-terracotta);
+      flex-shrink: 0;
+    }
+    .error-code {
+      font-family: var(--cx-font-serif);
+      font-size: 5rem;
+      font-weight: var(--cx-weight-bold);
+      color: var(--cx-color-forest);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--cx-space-4);
+    }
+    .error-title {
+      font-family: var(--cx-font-serif);
+      font-size: 1.5rem;
+      font-weight: var(--cx-weight-semibold);
+      color: var(--cx-text-primary);
+      margin-bottom: var(--cx-space-3);
+    }
+    .error-body {
+      font-size: var(--cx-text-body-sm);
+      color: var(--cx-text-secondary);
+      line-height: 1.65;
+      margin-bottom: var(--cx-space-8);
+    }
+    .error-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--cx-space-3);
+      justify-content: center;
+    }
+    .divider {
+      width: 48px;
+      height: 2px;
+      background: var(--cx-color-terracotta);
+      margin: 0 auto var(--cx-space-5);
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container" role="main">
+
+    <a href="/" class="error-wordmark" aria-label="CampusX home">
+      <span class="error-dot" aria-hidden="true"></span>
+      CampusX
+    </a>
+
+    <div class="error-code" aria-label="Error 404">404</div>
+    <div class="divider" aria-hidden="true"></div>
+    <h1 class="error-title">Page not found</h1>
+    <p class="error-body">
+      The page you're looking for doesn't exist or may have been moved.
+      Use the links below to find your way back.
+    </p>
+
+    <div class="error-actions">
+      <a href="/" class="btn btn-primary">Go to Home</a>
+      <a href="/login" class="btn btn-secondary">Sign in</a>
+    </div>
+
+  </div>
+
+  <script src="/static/js/api.js"></script>
+  <script>
+    // If authenticated, offer to go to dashboard instead
+    (function() {
+      if (typeof CampusX !== 'undefined' && CampusX.auth && CampusX.auth.isAuthenticated()) {
+        var role = CampusX.auth.getRole();
+        var dashUrl = CampusX.dashboardForRole(role);
+        var actions = document.querySelector('.error-actions');
+        if (actions) {
+          // Replace the sign-in button with dashboard link
+          var btn = actions.querySelector('a[href="/login"]');
+          if (btn) {
+            btn.href = dashUrl;
+            btn.textContent = 'Go to Dashboard';
+          }
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

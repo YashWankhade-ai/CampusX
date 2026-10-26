@@ -1,13 +1,392 @@
+{% set active_page = "dashboard" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
-{% endblock %}
-{% block content %}
-<div class="glass-panel">
-    <h1>Admin: Dashboard</h1>
-    <p>Welcome to the admin interface.</p>
+
+{% block title %}Admin Dashboard — CampusX{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<div class="top-breadcrumb-bar" style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--cx-color-ink-muted);">
+  <span style="color:var(--cx-color-ink-primary);font-weight:700;">Dashboard</span>
 </div>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner" style="width:100%;padding:0 0 64px 0;">
+
+  <!-- Page Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+    <div>
+      <h1 style="font-size:26px;font-weight:800;color:var(--cx-color-ink-primary);margin:0 0 6px 0;letter-spacing:-0.02em;">
+        Executive Administrative Dashboard
+      </h1>
+      <p style="font-size:14px;color:var(--cx-color-ink-muted);margin:0;">
+        Institutional oversight, enrollment metrics, and document moderation queue.
+      </p>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <a href="/admin/users" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-weight:600;text-decoration:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Manage Users
+      </a>
+      <a href="/admin/approval-queue" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-weight:600;text-decoration:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        Approval Queue ({{ stats.pending_approvals_count or 0 }})
+      </a>
+    </div>
+  </div>
+
+  <!-- 1. APPROVAL NOTIFICATION BANNER (Prominent when pending items exist) -->
+  {% if stats.pending_approvals_count and stats.pending_approvals_count > 0 %}
+  <div id="admin-approval-alert-banner" style="background:#FFFBEB;border:1px solid #FDE68A;border-left:4px solid #D97706;border-radius:8px;padding:16px 20px;margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:40px;height:40px;border-radius:8px;background:#FEF3C7;color:#D97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:700;font-size:15px;color:#92400E;">Pending Approval Notification</span>
+          <span style="background:#F59E0B;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;">Action Required</span>
+        </div>
+        <p style="margin:3px 0 0 0;font-size:13.5px;color:#B45309;">
+          There are <strong>{{ stats.pending_approvals_count }} resource{% if stats.pending_approvals_count != 1 %}s{% endif %}</strong> awaiting moderation in the queue before students can access them.
+        </p>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <a href="/admin/approval-queue" style="background:#D97706;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:13.5px;padding:8px 18px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;">
+        Review Documents &rarr;
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 2. EXECUTIVE METRIC CARDS -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:20px;margin-bottom:32px;">
+
+    <!-- CARD 1: ENROLLED STUDENTS (EXACT REQUEST) -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,0.02);position:relative;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Enrolled Users</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:8px 0 4px 0;line-height:1;">
+            {{ stats.enrolled_students_count }} <span style="font-size:18px;font-weight:500;color:#64748B;">/ {{ stats.student_users }}</span>
+          </div>
+        </div>
+        <div style="width:44px;height:44px;border-radius:10px;background:#EBF4EE;color:#1E5034;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <span style="background:#CBE6D5;color:#1E5034;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;">
+          {{ stats.enrollment_rate_pct }}% Enrolled
+        </span>
+        <span style="font-size:12.5px;color:#64748B;">
+          {{ stats.total_course_enrollments }} Course Enrollments
+        </span>
+      </div>
+    </div>
+
+    <!-- CARD 2: TOTAL USERS REGISTERED -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Total Users</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:8px 0 4px 0;line-height:1;">
+            {{ stats.total_users }}
+          </div>
+        </div>
+        <div style="width:44px;height:44px;border-radius:10px;background:#EEF5F9;color:#0F172A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#64748B;margin-top:10px;">
+        <strong>{{ stats.student_users }}</strong> Students &bull; <strong>{{ stats.faculty_users }}</strong> Faculty &bull; <strong>{{ stats.admin_users }}</strong> Staff
+      </div>
+    </div>
+
+    <!-- CARD 3: PENDING APPROVALS -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Pending Approvals</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:8px 0 4px 0;line-height:1;">
+            {{ stats.pending_approvals_count }}
+          </div>
+        </div>
+        <div style="width:44px;height:44px;border-radius:10px;background:#FEF3C7;color:#B45309;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        {% if stats.pending_approvals_count > 0 %}
+        <span style="background:#FEE2E2;color:#991B1B;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;">
+          Needs Moderation
+        </span>
+        <span style="font-size:12.5px;color:#64748B;">{{ stats.total_materials }} Total Materials</span>
+        {% else %}
+        <span style="background:#CBE6D5;color:#1E5034;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;">
+          All Up to Date
+        </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- CARD 4: ACADEMIC COURSES -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Active Courses</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:8px 0 4px 0;line-height:1;">
+            {{ stats.total_courses }}
+          </div>
+        </div>
+        <div style="width:44px;height:44px;border-radius:10px;background:#F1F5F9;color:#334155;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#64748B;margin-top:10px;">
+        Curriculum courses across 21 departments
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 3. TWO-COLUMN MAIN WORKSPACE -->
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:24px;">
+
+    <!-- LEFT COLUMN: APPROVAL NOTIFICATION QUEUE -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="padding:16px 22px;background:#EEF5F9;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span style="font-weight:700;font-size:16px;color:#0F172A;">Document Approvals Awaiting Review</span>
+          <span style="background:#FEF3C7;color:#B45309;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;">
+            {{ stats.pending_approvals_count }} Pending
+          </span>
+        </div>
+        <a href="/admin/approval-queue" style="font-size:13px;font-weight:600;color:#0284C7;text-decoration:none;">
+          View Full Queue &rarr;
+        </a>
+      </div>
+
+      <div style="padding:16px 22px;">
+        {% if stats.pending_items and stats.pending_items|length > 0 %}
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          {% for item in stats.pending_items %}
+          <div id="approval-row-{{ item.id }}" style="border:1px solid #F1F5F9;border-radius:8px;padding:14px 16px;background:#FAFBFD;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="background:#E2E8F0;color:#334155;font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;text-transform:uppercase;">
+                  {{ item.material_type }}
+                </span>
+                <span style="font-size:12px;color:#64748B;">{{ item.subject_name }}</span>
+                <span style="color:#CBD5E1;">&bull;</span>
+                <span style="font-size:12px;color:#64748B;">{{ item.created_at }}</span>
+              </div>
+              <h4 style="margin:0 0 4px 0;font-size:15px;font-weight:700;color:#0F172A;line-height:1.3;">
+                {{ item.title }}
+              </h4>
+              <p style="margin:0 0 8px 0;font-size:13px;color:#475569;line-height:1.4;">
+                {{ item.description|truncate(110) }}
+              </p>
+              <div style="font-size:12px;color:#64748B;">
+                Submitted by: <strong style="color:#0F172A;">{{ item.author_name }}</strong>
+                {% if item.author_email %}&lt;{{ item.author_email }}&gt;{% endif %}
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:105px;">
+              <form method="POST" action="/admin/approvals/{{ item.id }}/approve" style="margin:0;" onsubmit="return handleApprove('{{ item.id }}', this, event)">
+                <button type="submit" style="width:100%;background:#1E5034;color:#FFFFFF;border:none;padding:7px 12px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Approve
+                </button>
+              </form>
+              <form method="POST" action="/admin/approvals/{{ item.id }}/reject" style="margin:0;" onsubmit="return handleReject('{{ item.id }}', this, event)">
+                <button type="submit" style="width:100%;background:#FFFFFF;color:#DC2626;border:1px solid #FECACA;padding:6px 12px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                  Reject
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:36px 16px;color:#64748B;">
+          <div style="width:48px;height:48px;border-radius:50%;background:#EBF4EE;color:#1E5034;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px;height:24px;">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h4 style="margin:0 0 6px 0;font-size:16px;font-weight:700;color:#0F172A;">No Pending Approvals</h4>
+          <p style="margin:0;font-size:13.5px;color:#64748B;">All uploaded educational documents have been reviewed and approved.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: ENROLLED STUDENTS ROSTER -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="padding:16px 22px;background:#EBF4EE;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E5034" stroke-width="2" style="width:18px;height:18px;">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+          <span style="font-weight:700;font-size:16px;color:#1E5034;">Enrolled Students</span>
+        </div>
+        <a href="/admin/users" style="font-size:13px;font-weight:600;color:#1E5034;text-decoration:none;">
+          View All Users &rarr;
+        </a>
+      </div>
+
+      <div style="padding:16px 22px;">
+        <div style="margin-bottom:14px;padding:10px 14px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#475569;">Active Student Enrollment:</span>
+          <strong style="font-size:14px;color:#1E5034;">{{ stats.enrolled_students_count }} of {{ stats.student_users }} Students ({{ stats.enrollment_rate_pct }}%)</strong>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          {% for st in stats.recent_enrolled %}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F1F5F9;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:#E2ECE5;color:#153226;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                {{ st.full_name[:2]|upper }}
+              </div>
+              <div>
+                <div style="font-size:13.5px;font-weight:700;color:#0F172A;">{{ st.full_name }}</div>
+                <div style="font-size:12px;color:#64748B;">{{ st.email }}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              {% if st.is_enrolled %}
+              <span style="background:#CBE6D5;color:#1E5034;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;">
+                Enrolled
+              </span>
+              {% else %}
+              <span style="background:#F1F5F9;color:#64748B;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;display:inline-block;">
+                Not Enrolled
+              </span>
+              {% endif %}
+              <div style="font-size:11.5px;color:#94A3B8;margin-top:2px;">{{ st.course_enrollments }} course{% if st.course_enrollments != 1 %}s{% endif %}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div style="margin-top:18px;text-align:center;">
+          <a href="/admin/users" style="display:inline-block;width:100%;padding:9px;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:6px;font-size:13px;font-weight:600;color:#0F172A;text-decoration:none;">
+            Open Complete Users & Enrollment Directory &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Inline Javascript for Asynchronous Approval Execution -->
+<script>
+async function handleApprove(resourceId, form, event) {
+  event.preventDefault();
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  btn.innerText = 'Approving...';
+  try {
+    const res = await fetch('/admin/approvals/' + resourceId + '/approve', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const row = document.getElementById('approval-row-' + resourceId);
+      if (row) {
+        row.style.background = '#ECFDF5';
+        row.innerHTML = '<div style="padding:12px;color:#065F46;font-weight:600;font-size:13.5px;">✓ Resource approved successfully and released to students.</div>';
+        setTimeout(() => { row.remove(); updateBadge(); }, 1800);
+      }
+    } else {
+      form.submit();
+    }
+  } catch (err) {
+    form.submit();
+  }
+}
+
+async function handleReject(resourceId, form, event) {
+  event.preventDefault();
+  const reason = prompt('Optional reason for rejecting this document:', 'Needs revisions before publishing');
+  if (reason === null) return false;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  btn.innerText = 'Rejecting...';
+  try {
+    const formData = new FormData();
+    formData.append('reason', reason);
+    const res = await fetch('/admin/approvals/' + resourceId + '/reject', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: formData
+    });
+    if (res.ok) {
+      const row = document.getElementById('approval-row-' + resourceId);
+      if (row) {
+        row.style.background = '#FEF2F2';
+        row.innerHTML = '<div style="padding:12px;color:#991B1B;font-weight:600;font-size:13.5px;">✕ Resource rejected and returned to submitter.</div>';
+        setTimeout(() => { row.remove(); updateBadge(); }, 1800);
+      }
+    } else {
+      form.submit();
+    }
+  } catch (err) {
+    form.submit();
+  }
+}
+
+function updateBadge() {
+  const badge = document.getElementById('nav-approval-badge');
+  if (badge) {
+    let current = parseInt(badge.innerText || '0', 10);
+    if (current > 1) {
+      badge.innerText = current - 1;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+</script>
 {% endblock %}

@@ -101,22 +101,117 @@ class SearchService:
         if not query:
             return []
 
-        # Run async RAGService in a new event loop (Flask is synchronous)
-        loop = asyncio.new_event_loop()
+        raw_results = []
         try:
-            raw_results = loop.run_until_complete(
-                self._get_rag().hybrid_search(
-                    query=query,
-                    institution_id=institution_id,
-                    department_id=department_id,
-                    semester_id=semester_id,
-                    subject_id=subject_id,
-                    user_role=user_role,
-                    limit=limit,
-                )
-            )
-        finally:
-            loop.close()
+            loop = asyncio.new_event_loop()
+            try:
+                raw_results = loop.run_until_complete(
+                    self._get_rag().hybrid_search(
+                        query=query,
+                        institution_id=institution_id,
+                        department_id=department_id,
+                        semester_id=semester_id,
+                        subject_id=subject_id,
+                        user_role=user_role,
+                        limit=limit,
+                    )
+                ) or []
+            finally:
+                loop.close()
+        except Exception as e:
+            logger.warning('RAG search exception: %s', type(e).__name__)
+
+        # PDF & document content extraction topic search + DB keyword search
+        try:
+            from app.models.resource import StudyMaterial
+            from app.models.academic import Subject
+            from app.services.ai.document_processor import DocumentProcessor
+            from app.extensions import db
+            import re
+
+            q_pat = f'%{query}%'
+            q_lower = query.lower().strip()
+            q_words = [w for w in re.split(r'\s+', q_lower) if len(w) > 2]
+            seen = {str(r.get('document_id') or r.get('id')) for r in raw_results}
+
+            # 1. Direct metadata matches (Title, Description, Subject)
+            mats = db.session.query(StudyMaterial).outerjoin(Subject, StudyMaterial.subject_id == Subject.id).filter(
+                StudyMaterial.is_deleted == False,
+                StudyMaterial.status == 'APPROVED',
+                (StudyMaterial.title.ilike(q_pat) | StudyMaterial.description.ilike(q_pat) | Subject.name.ilike(q_pat))
+            ).limit(limit).all()
+
+            for m in mats:
+                mid = str(m.id)
+                if mid not in seen:
+                    raw_results.append({
+                        'document_id': mid,
+                        'id': mid,
+                        'title': m.title,
+                        'snippet': (m.description or m.title)[:300],
+                        'text': m.title,
+                        'score': 1.0,
+                        'match_type': 'keyword',
+                        'subject_id': str(m.subject_id) if m.subject_id else None,
+                        'chunk_index': 0,
+                    })
+                    seen.add(mid)
+
+            # 2. Deep PDF / Document text scan for topics inside uploaded documents
+            if q_words or len(q_lower) >= 3:
+                all_approved = db.session.query(StudyMaterial).filter(
+                    StudyMaterial.is_deleted == False,
+                    StudyMaterial.status == 'APPROVED'
+                ).all()
+
+                for m in all_approved:
+                    mid = str(m.id)
+                    doc_text = DocumentProcessor.extract_text_for_material(m)
+                    if not doc_text:
+                        continue
+
+                    doc_text_lower = doc_text.lower()
+                    matched_idx = doc_text_lower.find(q_lower)
+                    
+                    if matched_idx == -1 and q_words:
+                        for w in q_words:
+                            idx = doc_text_lower.find(w)
+                            if idx != -1:
+                                matched_idx = idx
+                                break
+
+                    if matched_idx != -1:
+                        # Extract a clean contextual snippet around the matched topic
+                        start_idx = max(0, matched_idx - 60)
+                        end_idx = min(len(doc_text), matched_idx + 180)
+                        snippet_text = doc_text[start_idx:end_idx].strip().replace('\n', ' ')
+                        if start_idx > 0:
+                            snippet_text = '...' + snippet_text
+                        if end_idx < len(doc_text):
+                            snippet_text = snippet_text + '...'
+
+                        if mid not in seen:
+                            raw_results.append({
+                                'document_id': mid,
+                                'id': mid,
+                                'title': m.title,
+                                'snippet': snippet_text,
+                                'text': snippet_text,
+                                'score': 0.95,
+                                'match_type': 'pdf_content',
+                                'subject_id': str(m.subject_id) if m.subject_id else None,
+                                'chunk_index': 0,
+                            })
+                            seen.add(mid)
+                        else:
+                            # Enrich existing metadata result with the exact matching PDF passage
+                            for item in raw_results:
+                                if (str(item.get('document_id') or item.get('id'))) == mid:
+                                    item['snippet'] = snippet_text
+                                    item['match_type'] = 'pdf_content'
+                                    break
+        except Exception as e:
+            logger.warning('Deep PDF/DB search exception: %s', type(e).__name__)
 
         # Apply pagination offset (results already limited by RAGService)
         offset = (page - 1) * limit

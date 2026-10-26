@@ -1,0 +1,195 @@
+{% set active_page = "courses" %}
+{% extends "base.html" %}
+
+{% block title %}My Courses — CampusX{% endblock %}
+{% block topbar_title %}Courses{% endblock %}
+
+{% block sidebar %}
+{% include "faculty/_nav.html" %}
+{% endblock %}
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">F</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Faculty</div>
+    <div class="sidebar-user-role">Faculty Workspace</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block breadcrumb %}
+<ol class="breadcrumb" aria-label="Breadcrumb">
+  <li class="breadcrumb-item"><a href="/faculty/dashboard">Dashboard</a></li>
+  <li class="breadcrumb-item" aria-current="page">Courses</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <div class="page-header">
+    <h1 class="page-header-title">My Courses</h1>
+    <p class="page-header-sub">Teaching assignments for your account</p>
+  </div>
+
+  <!-- Loading -->
+  <div id="courses-loading" aria-busy="true" aria-label="Loading courses">
+    {% for _ in range(4) %}
+    <div class="fx-course-card" style="pointer-events:none;">
+      <div class="fx-course-card-top">
+        <div class="skeleton" style="width:40px;height:40px;border-radius:var(--cx-radius-sm);"></div>
+        <div class="skeleton skeleton-text short" style="width:60px;margin-top:4px;"></div>
+      </div>
+      <div class="skeleton skeleton-title" style="margin-bottom:var(--cx-space-2);"></div>
+      <div class="skeleton skeleton-text med"></div>
+      <div class="skeleton skeleton-text short" style="width:100px;margin-top:var(--cx-space-3);"></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Courses content -->
+  <div id="courses-content" style="display:none;">
+
+    <div id="courses-meta" class="fx-list-meta" style="display:none;margin-bottom:var(--cx-space-4);" role="status" aria-live="polite"></div>
+
+    <div class="fx-course-grid" id="courses-grid" role="list" aria-label="Assigned courses"></div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="courses-empty" style="display:none;">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+      </svg>
+      <div class="empty-state-title">No assigned courses</div>
+      <p class="empty-state-body">You don't have any assigned courses yet. Contact your institution administrator to get course assignments.</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="courses-error" style="display:none;">
+      <div class="empty-state">
+        <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div class="empty-state-title">Could not load courses</div>
+        <p class="empty-state-body" id="courses-error-msg">An error occurred. Please try again.</p>
+        <button class="btn btn-primary" onclick="loadCourses()">Retry</button>
+      </div>
+    </div>
+
+  </div><!-- /#courses-content -->
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/faculty/courses');
+    return;
+  }
+  var _role = CampusX.auth.getRole();
+  if (_role === 'STUDENT' || _role === 'GUEST') {
+    window.location.replace(CampusX.dashboardForRole(_role));
+    return;
+  }
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function relativeTime(iso) {
+    if (!iso) return '';
+    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)  return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return Math.floor(diff/86400) + 'd ago';
+  }
+
+  function renderCourseCard(c) {
+    var name = c.course_name || 'Unnamed Course';
+    var code = c.course_code || '';
+    var cid = c.course_id || c.id;
+    var href = '/faculty/courses/' + encodeURIComponent(cid) + '/students';
+    var primaryBadge = c.is_primary
+      ? '<span class="badge badge-success" style="font-size:10px;">Primary</span>'
+      : '<span class="badge" style="font-size:10px;opacity:0.7;">Secondary</span>';
+    var since = c.created_at ? 'Assigned ' + relativeTime(c.created_at) : '';
+
+    return '<a href="' + href + '" class="fx-course-card" role="listitem" aria-label="' + escHtml(name) + ', view students">' +
+      '<div class="fx-course-card-top">' +
+        '<div class="fx-course-card-icon" aria-hidden="true">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>' +
+        '</div>' +
+        primaryBadge +
+      '</div>' +
+      '<div class="fx-course-card-name">' + escHtml(name) + '</div>' +
+      (code ? '<div class="fx-course-card-code">' + escHtml(code) + '</div>' : '') +
+      (since ? '<div class="fx-course-card-since">' + escHtml(since) + '</div>' : '') +
+      '<div class="fx-course-card-action">' +
+        '<span>View students</span>' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</div>' +
+    '</a>';
+  }
+
+  async function loadCourses() {
+    document.getElementById('courses-loading').style.display = '';
+    document.getElementById('courses-content').style.display = 'none';
+
+    try {
+      var res = await fetch('/api/v1/faculty/courses', {
+        headers: { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() }
+      });
+
+      if (res.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      var json = await res.json();
+      if (!res.ok) {
+        throw new Error((json.error && json.error.message) || 'Failed to load courses.');
+      }
+
+      var courses = Array.isArray(json.data) ? json.data : [];
+      var total = (json.meta && json.meta.total != null) ? json.meta.total : courses.length;
+
+      // Sidebar user from token cache
+      var user = CampusX.auth.getUser();
+      if (user && user.full_name) {
+        var initials = user.full_name.split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+        document.getElementById('sidebar-name').textContent = user.full_name;
+        document.getElementById('sidebar-avatar').textContent = initials;
+      }
+
+      document.getElementById('courses-loading').style.display = 'none';
+      document.getElementById('courses-content').style.display = '';
+
+      var metaEl = document.getElementById('courses-meta');
+      if (total > 0) {
+        metaEl.textContent = total + (total === 1 ? ' course' : ' courses') + ' assigned';
+        metaEl.style.display = '';
+      }
+
+      if (courses.length === 0) {
+        document.getElementById('courses-empty').style.display = '';
+      } else {
+        document.getElementById('courses-grid').innerHTML = courses.map(renderCourseCard).join('');
+      }
+
+    } catch (err) {
+      document.getElementById('courses-loading').style.display = 'none';
+      document.getElementById('courses-content').style.display = '';
+      document.getElementById('courses-error').style.display = '';
+      document.getElementById('courses-error-msg').textContent = err && err.message ? err.message : 'Unable to load courses.';
+    }
+  }
+
+  window.loadCourses = loadCourses;
+  loadCourses();
+})();
+</script>
+{% endblock %}

@@ -1,13 +1,341 @@
+{% set active_page = "dashboard" %}
 {% extends "base.html" %}
+
+{% block title %}Faculty Dashboard — CampusX{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
 {% block sidebar %}
-<ul>
-    <li><a href="#">Faculty Dashboard</a></li>
-    <li><a href="#">My Uploads</a></li>
-</ul>
+{% include "faculty/_nav.html" %}
 {% endblock %}
-{% block content %}
-<div class="glass-panel">
-    <h1>Faculty: Dashboard</h1>
-    <p>Welcome to the faculty interface.</p>
+
+{% block sidebar_user %}
+<div class="sidebar-user" id="sidebar-user">
+  <div class="avatar avatar-forest" style="width:32px;height:32px;font-size:12px;" id="sidebar-avatar" aria-hidden="true">F</div>
+  <div class="sidebar-user-info">
+    <div class="sidebar-user-name truncate" id="sidebar-name">Faculty</div>
+    <div class="sidebar-user-role" id="sidebar-role">Faculty Workspace</div>
+  </div>
 </div>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="/student/notifications" class="btn btn-ghost btn-icon" aria-label="Notifications" id="topbar-notif-btn">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 01-3.46 0"/>
+  </svg>
+  <span id="topbar-notif-badge" class="nav-item-badge" style="position:absolute;top:-2px;right:-2px;display:none;" aria-label="unread notifications"></span>
+</a>
+<button class="btn btn-ghost btn-sm" id="user-menu-btn" style="position:relative;" aria-haspopup="true" aria-expanded="false">
+  <div class="avatar avatar-sm avatar-forest" id="topbar-avatar" aria-hidden="true">F</div>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner">
+
+  <!-- Page header -->
+  <div class="page-header" id="greeting-header">
+    <h1 class="page-header-title" id="greeting-text">Good morning</h1>
+    <p class="page-header-sub" id="greeting-sub">Loading your workspace…</p>
+  </div>
+
+  <!-- Loading skeletons -->
+  <div id="dashboard-loading" aria-busy="true" aria-label="Loading dashboard">
+    <div class="stat-tiles">
+      {% for _ in range(4) %}
+      <div class="stat-tile">
+        <div class="skeleton skeleton-text short"></div>
+        <div class="skeleton" style="height:28px;width:40%;margin-bottom:var(--cx-space-2);"></div>
+        <div class="skeleton skeleton-text med"></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:var(--cx-space-8);">
+      <div class="skeleton skeleton-text short" style="width:120px;margin-bottom:var(--cx-space-4);"></div>
+      {% for _ in range(3) %}
+      <div class="fx-course-item" style="pointer-events:none;">
+        <div class="fx-course-item-icon">
+          <div class="skeleton" style="width:36px;height:36px;border-radius:var(--cx-radius-sm);"></div>
+        </div>
+        <div class="fx-course-item-body">
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text short"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Main dashboard content -->
+  <div id="dashboard-content" style="display:none;">
+
+    <!-- Stat tiles -->
+    <div class="stat-tiles" role="list" aria-label="Faculty workspace summary">
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Assigned Courses</div>
+        <div class="stat-tile-value" id="stat-courses">—</div>
+        <div class="stat-tile-sub">Your teaching assignments</div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Total Resources</div>
+        <div class="stat-tile-value" id="stat-resources">—</div>
+        <div class="stat-tile-sub" id="stat-resources-sub">Uploaded materials</div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Contributions</div>
+        <div class="stat-tile-value" id="stat-contributions">—</div>
+        <div class="stat-tile-sub">Platform contributions</div>
+      </div>
+      <div class="stat-tile" role="listitem">
+        <div class="stat-tile-label">Notifications</div>
+        <div class="stat-tile-value" id="stat-notifications">—</div>
+        <div class="stat-tile-sub">Unread</div>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div style="margin-bottom:var(--cx-space-8);">
+      <p class="section-label">Quick actions</p>
+      <div class="quick-actions-grid">
+        <a href="/faculty/courses" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(36,72,58,0.10);color:var(--cx-color-forest);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          </div>
+          <div class="quick-action-label">My Courses</div>
+          <div class="quick-action-desc">View assigned teaching courses</div>
+        </a>
+        <a href="/faculty/resources" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(184,92,56,0.10);color:var(--cx-color-terracotta);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="quick-action-label">My Resources</div>
+          <div class="quick-action-desc">Manage your uploaded materials</div>
+        </a>
+        <a href="/student/ai-chat" class="quick-action-card">
+          <div class="quick-action-icon" style="background:var(--cx-color-ochre-pale);color:#7a5a10;" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"/></svg>
+          </div>
+          <div class="quick-action-label">CampusX AI</div>
+          <div class="quick-action-desc">Ask questions about any resource</div>
+        </a>
+        <a href="/faculty/upload" class="quick-action-card">
+          <div class="quick-action-icon" style="background:rgba(97,116,90,0.10);color:var(--cx-color-moss);" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="quick-action-label">Upload Material</div>
+          <div class="quick-action-desc">Upload course files &amp; notes</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Assigned Courses section -->
+    <div>
+      <div class="section-header">
+        <h2 class="section-header-title">Assigned Courses</h2>
+        <a href="/faculty/courses" class="btn btn-ghost btn-sm">View all</a>
+      </div>
+
+      <div id="courses-loading" class="fx-course-list">
+        {% for _ in range(3) %}
+        <div class="fx-course-item" style="pointer-events:none;">
+          <div class="fx-course-item-icon">
+            <div class="skeleton" style="width:36px;height:36px;border-radius:var(--cx-radius-sm);"></div>
+          </div>
+          <div class="fx-course-item-body">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text short"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div id="courses-content" style="display:none;">
+        <div class="fx-course-list" id="courses-list" role="list" aria-label="Assigned courses"></div>
+        <div class="empty-state" id="courses-empty" style="display:none;">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          <div class="empty-state-title">No assigned courses</div>
+          <p class="empty-state-body">You don't have any assigned courses yet. Contact your administrator to get course assignments.</p>
+        </div>
+        <div id="courses-error" style="display:none;" class="alert alert-error" role="alert">
+          <span id="courses-error-msg"></span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#dashboard-content -->
+
+  <!-- Full-page error state -->
+  <div id="dashboard-error" style="display:none;">
+    <div class="empty-state">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="empty-state-title">Could not load dashboard</div>
+      <p class="empty-state-body" id="dashboard-error-msg">An error occurred. Please try again.</p>
+      <button class="btn btn-primary" onclick="loadDashboard()">Retry</button>
+    </div>
+  </div>
+
+</div><!-- /.page-body-inner -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Auth guard ──────────────────────────────────────────────────
+  if (!CampusX.auth.isAuthenticated()) {
+    window.location.replace('/login?next=/faculty/dashboard');
+    return;
+  }
+  // Soft role guard: redirect obvious non-faculty roles to their dashboard
+  var _role = CampusX.auth.getRole();
+  if (_role === 'STUDENT' || _role === 'GUEST') {
+    window.location.replace(CampusX.dashboardForRole(_role));
+    return;
+  }
+
+  // ── Greeting ────────────────────────────────────────────────────
+  var hour = new Date().getHours();
+  var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting-text').textContent = greeting;
+
+  // ── Utilities ────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function relativeTime(iso) {
+    if (!iso) return '';
+    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60)  return 'just now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    return Math.floor(diff/86400) + 'd ago';
+  }
+  function authHeader() {
+    return { Authorization: 'Bearer ' + CampusX.auth.getAccessToken() };
+  }
+
+  // ── Sidebar user ─────────────────────────────────────────────────
+  function populateSidebarUser(d) {
+    var name = d.full_name || d.display_name || 'Faculty';
+    var initials = name.split(' ').map(function(p) { return p[0]; }).slice(0, 2).join('').toUpperCase();
+    document.getElementById('sidebar-name').textContent = name;
+    document.getElementById('sidebar-avatar').textContent = initials;
+    document.getElementById('topbar-avatar').textContent = initials;
+  }
+
+  // ── Notification badge ───────────────────────────────────────────
+  function updateBadge(count) {
+    var badge = document.getElementById('nav-notif-badge');
+    var tbBadge = document.getElementById('topbar-notif-badge');
+    if (count > 0) {
+      var label = count > 99 ? '99+' : String(count);
+      if (badge)   { badge.textContent = label; badge.style.display = ''; badge.setAttribute('aria-label', label + ' unread notifications'); }
+      if (tbBadge) { tbBadge.textContent = label; tbBadge.style.display = ''; }
+    } else {
+      if (badge)   badge.style.display = 'none';
+      if (tbBadge) tbBadge.style.display = 'none';
+    }
+  }
+
+  // ── Render course item ───────────────────────────────────────────
+  function renderCourseItem(c) {
+    var name = c.course_name || ('Course ' + String(c.course_id || c.id).slice(0, 8));
+    var code = c.course_code ? ' · ' + escHtml(c.course_code) : '';
+    var primary = c.is_primary ? '<span class="badge badge-success" style="font-size:10px;margin-left:6px;">Primary</span>' : '';
+    var href = '/faculty/courses/' + encodeURIComponent(c.course_id || c.id) + '/students';
+    var since = c.created_at ? '<span class="fx-course-meta-item">Assigned ' + relativeTime(c.created_at) + '</span>' : '';
+    return '<a href="' + href + '" class="fx-course-item" role="listitem">' +
+      '<div class="fx-course-item-icon" aria-hidden="true">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>' +
+      '</div>' +
+      '<div class="fx-course-item-body">' +
+        '<div class="fx-course-item-name">' + escHtml(name) + primary + '</div>' +
+        '<div class="fx-course-item-meta">' + escHtml(c.course_code || '') + code.replace(' · ', '') + since + '</div>' +
+      '</div>' +
+      '<div class="fx-course-item-arrow" aria-hidden="true">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</div>' +
+    '</a>';
+  }
+
+  // ── Load dashboard ───────────────────────────────────────────────
+  async function loadDashboard() {
+    document.getElementById('dashboard-loading').style.display = '';
+    document.getElementById('dashboard-content').style.display = 'none';
+    document.getElementById('dashboard-error').style.display = 'none';
+
+    try {
+      var headers = authHeader();
+      var [dashRes, coursesRes] = await Promise.all([
+        fetch('/api/v1/faculty/dashboard', { headers: headers }),
+        fetch('/api/v1/faculty/courses', { headers: headers }),
+      ]);
+
+      if (dashRes.status === 401 || coursesRes.status === 401) {
+        CampusX.auth.clearSession();
+        window.location.replace('/login?session=expired');
+        return;
+      }
+
+      var dashJson = await dashRes.json();
+      var coursesJson = await coursesRes.json();
+
+      if (!dashRes.ok) {
+        throw new Error((dashJson.error && dashJson.error.message) || 'Failed to load dashboard.');
+      }
+
+      var d = dashJson.data || dashJson;
+      var courses = Array.isArray(coursesJson.data) ? coursesJson.data : [];
+
+      // Populate sidebar & greeting
+      populateSidebarUser(d);
+      var sub = d.institution_name || 'Faculty Workspace';
+      if (d.institution_code) sub += ' (' + escHtml(d.institution_code) + ')';
+      document.getElementById('greeting-sub').textContent = sub;
+
+      // Stat tiles — only real backend fields
+      document.getElementById('stat-courses').textContent = d.assigned_course_count != null ? d.assigned_course_count : '—';
+      document.getElementById('stat-resources').textContent = d.total_resource_count != null ? d.total_resource_count : '—';
+      document.getElementById('stat-contributions').textContent = d.contribution_count != null ? d.contribution_count : '—';
+      document.getElementById('stat-notifications').textContent = d.unread_notification_count != null ? d.unread_notification_count : '—';
+
+      // Resource sub — show approved/pending breakdown if available
+      if (d.approved_resource_count != null && d.pending_resource_count != null) {
+        document.getElementById('stat-resources-sub').textContent =
+          d.approved_resource_count + ' approved · ' + d.pending_resource_count + ' pending';
+      }
+
+      // Notification badge
+      updateBadge(d.unread_notification_count || 0);
+
+      // Render courses
+      document.getElementById('courses-loading').style.display = 'none';
+      document.getElementById('courses-content').style.display = '';
+      var list = document.getElementById('courses-list');
+      if (courses.length === 0) {
+        document.getElementById('courses-empty').style.display = '';
+      } else {
+        list.innerHTML = courses.slice(0, 6).map(renderCourseItem).join('');
+      }
+
+      // Show content
+      document.getElementById('dashboard-loading').style.display = 'none';
+      document.getElementById('dashboard-content').style.display = '';
+
+    } catch (err) {
+      document.getElementById('dashboard-loading').style.display = 'none';
+      document.getElementById('dashboard-error').style.display = '';
+      var msg = err && err.message ? err.message : 'Unable to load dashboard.';
+      document.getElementById('dashboard-error-msg').textContent = msg;
+    }
+  }
+
+  window.loadDashboard = loadDashboard;
+  loadDashboard();
+})();
+</script>
 {% endblock %}

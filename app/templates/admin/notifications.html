@@ -1,0 +1,109 @@
+{% set active_page = "notifications" %}
+{% extends "base.html" %}
+
+{% block title %}Admin Notifications — CampusX{% endblock %}
+{% block topbar_title %}Notifications{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<div class="top-breadcrumb-bar" style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--cx-color-ink-muted);">
+  <a href="/admin/dashboard" style="color:#64748B;text-decoration:none;">Dashboard</a>
+  <span style="color:#94A3B8;">&rsaquo;</span>
+  <span style="color:#0F172A;font-weight:700;">Notifications</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-body-inner" style="width:100%;padding:0 0 64px 0;">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+    <div>
+      <h1 style="font-size:26px;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-0.02em;">
+        Administrative Notifications &amp; Alerts
+      </h1>
+      <p style="font-size:14px;color:#64748B;margin:0;">
+        Actionable alerts for document approvals, enrollment activity, and institutional system events.
+      </p>
+    </div>
+  </div>
+
+  <!-- 1. PENDING APPROVAL NOTIFICATIONS (HERO SECTION) -->
+  <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);margin-bottom:24px;">
+    <div style="padding:16px 20px;background:#FFFBEB;border-bottom:1px solid #FDE68A;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🔔</span>
+        <div>
+          <span style="font-weight:700;font-size:15px;color:#92400E;">Approval Notifications</span>
+          <span style="background:#D97706;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;">
+            {{ approvals.pending_count }} Pending
+          </span>
+        </div>
+      </div>
+      <a href="/admin/approval-queue" style="font-size:13px;font-weight:600;color:#B45309;text-decoration:none;">
+        Open Approval Queue &rarr;
+      </a>
+    </div>
+
+    <div style="padding:16px 20px;">
+      {% if approvals.pending and approvals.pending|length > 0 %}
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        {% for item in approvals.pending %}
+        <div style="padding:12px 16px;background:#FAFBFD;border:1px solid #F1F5F9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+              <span style="background:#EEF5F9;color:#0F172A;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase;">
+                {{ item.material_type }}
+              </span>
+              <span style="font-size:12px;color:#64748B;">Submitted on {{ item.created_at }}</span>
+            </div>
+            <div style="font-weight:700;font-size:14.5px;color:#0F172A;">{{ item.title }}</div>
+            <div style="font-size:12.5px;color:#64748B;">Author: <strong>{{ item.author_name }}</strong> &bull; Subject: {{ item.subject_name }}</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <a href="/admin/approval-queue" style="padding:6px 14px;background:#1E5034;color:#FFFFFF;border-radius:6px;font-size:12.5px;font-weight:600;text-decoration:none;">
+              Review &amp; Approve
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:24px;text-align:center;color:#64748B;font-size:14px;">
+        ✓ All document submissions have been processed. No pending approval notifications.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 2. RECENT ENROLLMENT & SYSTEM NOTIFICATIONS -->
+  <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+    <div style="padding:16px 20px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">🎓</span>
+      <span style="font-weight:700;font-size:15px;color:#0F172A;">Student Enrollment &amp; Activity Stream</span>
+    </div>
+
+    <div style="padding:16px 20px;">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="padding:12px 16px;background:#F8FAFC;border-radius:8px;border-left:3px solid #1E5034;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:#0F172A;">Active Enrollment Roster Confirmed</div>
+            <div style="font-size:12.5px;color:#64748B;">{{ stats.enrolled_students_count }} of {{ stats.student_users }} registered students are actively enrolled in courses.</div>
+          </div>
+          <span style="font-size:12px;color:#94A3B8;">Today</span>
+        </div>
+
+        <div style="padding:12px 16px;background:#F8FAFC;border-radius:8px;border-left:3px solid #0284C7;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:#0F172A;">Curriculum Catalog Synced</div>
+            <div style="font-size:12.5px;color:#64748B;">{{ stats.total_courses }} academic courses online across 21 departments.</div>
+          </div>
+          <span style="font-size:12px;color:#94A3B8;">Current Term</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -27,6 +27,8 @@ class UploadService:
         description: str = '',
         subject_id: str = None,
         resource_type: str = 'NOTE',
+        faculty_name: str = None,
+        department_name: str = None,
     ) -> dict:
         """Complete upload flow with validation, storage, and DB persistence."""
         filename = file.filename
@@ -64,7 +66,9 @@ class UploadService:
                 author_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
                 material_type=material_type_enum,
                 status="PENDING",  # Requires approval before becoming available
-                subject_id=uuid.UUID(subject_id) if subject_id else None
+                subject_id=uuid.UUID(subject_id) if subject_id else None,
+                faculty_name=faculty_name,
+                department_name=department_name,
             )
 
             # 6. Create FileMetadata record
@@ -118,6 +122,8 @@ class UploadService:
                 "description": material.description,
                 "resource_type": material.material_type.value,
                 "status": material.status,
+                "faculty_name": material.faculty_name,
+                "department_name": material.department_name,
                 "created_at": material.created_at.isoformat() if material.created_at else None
             }
         except Exception as e:

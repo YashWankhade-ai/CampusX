@@ -30,11 +30,13 @@ from app.permissions.roles import Role
 logger = logging.getLogger(__name__)
 
 MAX_LIMIT = 100
-PROFILE_UPDATE_FIELDS = frozenset({"full_name", "display_name", "avatar_url", "timezone", "locale"})
+PROFILE_UPDATE_FIELDS = frozenset({"full_name", "display_name", "avatar_url", "timezone", "locale", "phone", "bio", "location"})
 
 
 def _safe_user_dict(user: User) -> dict:
     """Explicit-allowlist safe serializer. NEVER exposes password_hash, tokens, OTPs."""
+    meta = user.metadata_json or {}
+    bio = user.profile.bio if user.profile and user.profile.bio else meta.get("bio")
     return {
         "id": str(user.id),
         "email": user.email,
@@ -46,6 +48,9 @@ def _safe_user_dict(user: User) -> dict:
         "institution_id": str(user.institution_id) if user.institution_id else None,
         "timezone": user.timezone,
         "locale": user.locale,
+        "phone": meta.get("phone"),
+        "bio": bio,
+        "location": meta.get("location"),
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
     }
@@ -78,9 +83,15 @@ class UserService:
         ).first()
         if not user:
             return None
+        meta = dict(user.metadata_json or {})
         for key, value in kwargs.items():
-            if key in PROFILE_UPDATE_FIELDS and hasattr(user, key):
+            if key in ("phone", "bio", "location"):
+                meta[key] = value
+                if key == "bio" and user.profile:
+                    user.profile.bio = value
+            elif key in PROFILE_UPDATE_FIELDS and hasattr(user, key):
                 setattr(user, key, value)
+        user.metadata_json = meta
         db.session.commit()
         return _safe_user_dict(user)
 

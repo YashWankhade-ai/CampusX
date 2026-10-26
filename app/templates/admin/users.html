@@ -1,13 +1,760 @@
+{% set active_page = "users" %}
 {% extends "base.html" %}
-{% block sidebar %}
-<ul>
-    <li><a href="#">Admin Dashboard</a></li>
-    <li><a href="#">Manage Users</a></li>
-</ul>
+
+{% block title %}Users & Enrollment Directory — CampusX{% endblock %}
+{% block topbar_title %}Users{% endblock %}
+
+{% block sidebar %}{% include "admin/_nav.html" %}{% endblock %}
+
+{% block breadcrumb %}
+<div class="top-breadcrumb-bar" style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--cx-color-ink-muted);">
+  <a href="/admin/dashboard" style="color:#64748B;text-decoration:none;">Dashboard</a>
+  <span style="color:#94A3B8;">&rsaquo;</span>
+  <span style="color:#0F172A;font-weight:700;">Users &amp; Enrollments</span>
+</div>
 {% endblock %}
+
 {% block content %}
-<div class="glass-panel">
-    <h1>Admin: Users</h1>
-    <p>Welcome to the admin interface.</p>
+<div class="page-body-inner" style="width:100%;padding:0 0 64px 0;">
+
+  <!-- Flash / Query Alert Banners -->
+  {% if error %}
+  <div style="background:#FEF2F2;border:1px solid #FCA5A5;border-left:4px solid #DC2626;border-radius:8px;padding:12px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;color:#991B1B;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span><strong>Error:</strong> {{ error }}</span>
+    </div>
+    <a href="/admin/users" style="color:#991B1B;text-decoration:none;font-size:18px;font-weight:700;line-height:1;">&times;</a>
+  </div>
+  {% endif %}
+
+  {% if created %}
+  <div style="background:#F0FDF4;border:1px solid #86EFAC;border-left:4px solid #16A34A;border-radius:8px;padding:12px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;color:#166534;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span><strong>Success!</strong> Account created successfully for <strong>{{ created }}</strong>.</span>
+    </div>
+    <a href="/admin/users" style="color:#166534;text-decoration:none;font-size:18px;font-weight:700;line-height:1;">&times;</a>
+  </div>
+  {% endif %}
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+    <div>
+      <h1 style="font-size:26px;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-0.02em;">
+        User Directory &amp; Enrollment Management
+      </h1>
+      <p style="font-size:14px;color:#64748B;margin:0;">
+        Complete breakdown of student course enrollments, faculty appointments, and administrative access.
+      </p>
+    </div>
+    <div>
+      <button type="button" onclick="openCreateUserModal()" style="background:#0F172A;color:#FFFFFF;border:none;padding:10px 18px;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Create New User
+      </button>
+    </div>
+  </div>
+
+  <!-- STAT METRICS TILES -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:18px;margin-bottom:28px;">
+
+    <!-- TILE 1: ENROLLED USERS (PRIMARY REQUIREMENT) -->
+    <div style="background:#FFFFFF;border:2px solid #CBE6D5;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12px;font-weight:700;color:#1E5034;text-transform:uppercase;letter-spacing:0.05em;">Enrolled Students</span>
+          <div style="font-size:32px;font-weight:800;color:#1E5034;margin:6px 0 2px 0;line-height:1;">
+            {{ stats.enrolled_students_count }} <span style="font-size:17px;font-weight:500;color:#64748B;">/ {{ stats.student_count }}</span>
+          </div>
+        </div>
+        <div style="width:42px;height:42px;border-radius:10px;background:#CBE6D5;color:#1E5034;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#2D6A4F;margin-top:8px;font-weight:600;">
+        {{ stats.enrollment_rate_pct }}% of all students currently enrolled
+      </div>
+    </div>
+
+    <!-- TILE 2: TOTAL USERS -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Total Registered</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:6px 0 2px 0;line-height:1;">
+            {{ stats.total_users }}
+          </div>
+        </div>
+        <div style="width:42px;height:42px;border-radius:10px;background:#EEF5F9;color:#0F172A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#64748B;margin-top:8px;">
+        Institutional identity accounts
+      </div>
+    </div>
+
+    <!-- TILE 3: COURSE ENROLLMENTS COUNT -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Course Enrollments</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:6px 0 2px 0;line-height:1;">
+            {{ stats.total_course_enrollments }}
+          </div>
+        </div>
+        <div style="width:42px;height:42px;border-radius:10px;background:#F1F5F9;color:#334155;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#64748B;margin-top:8px;">
+        Active subject registrations
+      </div>
+    </div>
+
+    <!-- TILE 4: FACULTY MEMBERS -->
+    <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">Faculty Instructors</span>
+          <div style="font-size:32px;font-weight:800;color:#0F172A;margin:6px 0 2px 0;line-height:1;">
+            {{ stats.faculty_count }}
+          </div>
+        </div>
+        <div style="width:42px;height:42px;border-radius:10px;background:#FAF5FF;color:#6B21A8;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;">
+            <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+          </svg>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#64748B;margin-top:8px;">
+        {{ stats.admin_count }} administrative staff
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TABLE CONTAINER & FILTER CONTROLS -->
+  <div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+    
+    <!-- Filter Toolbar -->
+    <div style="padding:16px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;max-width:400px;">
+        <div style="position:relative;width:100%;">
+          <input
+            type="text"
+            id="user-search-input"
+            placeholder="Search users by name, email, department..."
+            oninput="filterUsers()"
+            style="width:100%;padding:8px 12px 8px 36px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;outline:none;background:#FFFFFF;"
+          />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" style="position:absolute;left:12px;top:10px;width:16px;height:16px;">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Filter Buttons -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12.5px;font-weight:600;color:#64748B;">Filter:</span>
+        <button type="button" class="filter-btn active" onclick="setRoleFilter('ALL', this)" style="padding:5px 12px;border:1px solid #CBD5E1;border-radius:6px;background:#0F172A;color:#FFFFFF;font-size:12.5px;font-weight:600;cursor:pointer;">
+          All Users ({{ users|length }})
+        </button>
+        <button type="button" class="filter-btn" onclick="setRoleFilter('ENROLLED', this)" style="padding:5px 12px;border:1px solid #CBD5E1;border-radius:6px;background:#FFFFFF;color:#0F172A;font-size:12.5px;font-weight:600;cursor:pointer;">
+          Enrolled Students ({{ stats.enrolled_students_count }})
+        </button>
+        <button type="button" class="filter-btn" onclick="setRoleFilter('STUDENT', this)" style="padding:5px 12px;border:1px solid #CBD5E1;border-radius:6px;background:#FFFFFF;color:#0F172A;font-size:12.5px;font-weight:600;cursor:pointer;">
+          Students ({{ stats.student_count }})
+        </button>
+        <button type="button" class="filter-btn" onclick="setRoleFilter('FACULTY', this)" style="padding:5px 12px;border:1px solid #CBD5E1;border-radius:6px;background:#FFFFFF;color:#0F172A;font-size:12.5px;font-weight:600;cursor:pointer;">
+          Faculty ({{ stats.faculty_count }})
+        </button>
+        <button type="button" class="filter-btn" onclick="setRoleFilter('PENDING', this)" style="padding:5px 12px;border:1px solid #CBD5E1;border-radius:6px;background:#FFFFFF;color:#B45309;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+          <span>Pending Approval</span>
+          <span style="background:#FEF3C7;color:#B45309;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:700;">{{ stats.pending_users_count }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;text-align:left;font-size:13.5px;">
+        <thead>
+          <tr style="background:#F1F5F9;color:#475569;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #E2E8F0;">
+            <th style="padding:12px 20px;">User &amp; Institutional ID</th>
+            <th style="padding:12px 16px;">Email</th>
+            <th style="padding:12px 16px;">Role</th>
+            <th style="padding:12px 16px;">Enrollment Status</th>
+            <th style="padding:12px 16px;">Department / Program</th>
+            <th style="padding:12px 16px;">Account</th>
+            <th style="padding:12px 16px;">Registered</th>
+            <th style="padding:12px 20px;text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody">
+          {% for u in users %}
+          <tr class="user-row" id="user-row-{{ u.id }}" data-role="{{ u.role }}" data-status="{{ u.status }}" data-enrolled="{{ 'true' if u.is_enrolled else 'false' }}" style="border-bottom:1px solid #F1F5F9;transition:background 0.15s ease;">
+            <!-- User Name + Avatar + Institutional ID -->
+            <td style="padding:14px 20px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#E2ECE5;color:#153226;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  {{ u.full_name[:2]|upper }}
+                </div>
+                <div>
+                  <div class="user-name" style="font-weight:700;color:#0F172A;">{{ u.full_name }}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                    <span class="user-inst-id" style="font-size:11px;font-family:monospace;font-weight:700;background:#F1F5F9;color:#0F172A;padding:1px 6px;border-radius:4px;border:1px solid #CBD5E1;">
+                      {{ u.institutional_id }}
+                    </span>
+                    <span style="font-size:10px;font-weight:700;background:#E0F2FE;color:#0369A1;padding:1px 5px;border-radius:4px;">
+                      {{ u.branch_code }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Email -->
+            <td class="user-email" style="padding:14px 16px;color:#334155;font-weight:500;">
+              {{ u.email }}
+            </td>
+
+            <!-- Role Badge -->
+            <td style="padding:14px 16px;">
+              {% if u.role == 'STUDENT' %}
+              <span style="background:#EBF4EE;color:#1E5034;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;">
+                Student
+              </span>
+              {% elif u.role == 'FACULTY' %}
+              <span style="background:#FAF5FF;color:#6B21A8;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;">
+                Faculty
+              </span>
+              {% elif 'ADMIN' in u.role %}
+              <span style="background:#EEF5F9;color:#0F172A;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;">
+                {{ u.role|replace('_', ' ') }}
+              </span>
+              {% else %}
+              <span style="background:#F1F5F9;color:#64748B;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;">
+                {{ u.role }}
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- ENROLLMENT STATUS (KEY USER REQUIREMENT) -->
+            <td style="padding:14px 16px;">
+              {% if u.role == 'STUDENT' %}
+                {% if u.is_enrolled %}
+                <span style="background:#CBE6D5;color:#1E5034;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;display:inline-flex;align-items:center;gap:5px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:12px;height:12px;">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Enrolled ({{ u.course_enrollments }} Course{% if u.course_enrollments != 1 %}s{% endif %})
+                </span>
+                {% else %}
+                <span style="background:#FEF3C7;color:#B45309;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;display:inline-flex;align-items:center;gap:4px;">
+                  Not Enrolled
+                </span>
+                {% endif %}
+              {% elif u.role == 'FACULTY' %}
+              <span style="background:#F1F5F9;color:#475569;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;">
+                Instructor Assigned
+              </span>
+              {% else %}
+              <span style="color:#94A3B8;font-size:12px;">&mdash;</span>
+              {% endif %}
+            </td>
+
+            <!-- Academic Department & Program -->
+            <td class="user-program" style="padding:14px 16px;color:#334155;font-size:13px;">
+              <div style="font-weight:600;color:#0F172A;display:flex;align-items:center;gap:6px;">
+                <span style="font-size:10.5px;font-weight:700;padding:1px 5px;border-radius:3px;background:#F1F5F9;color:#475569;">{{ u.branch_code }}</span>
+                <span>{{ u.department_name }}</span>
+              </div>
+              <div style="font-size:11.5px;color:#64748B;margin-top:2px;">{{ u.program }}</div>
+            </td>
+
+            <!-- Account Status -->
+            <td style="padding:14px 16px;">
+              {% if u.status == 'active' %}
+              <span class="user-status-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#1E5034;font-weight:600;">
+                <span style="width:7px;height:7px;border-radius:50%;background:#1E5034;"></span>
+                Active
+              </span>
+              {% else %}
+              <span class="user-status-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:#B45309;font-weight:600;">
+                <span style="width:7px;height:7px;border-radius:50%;background:#F59E0B;"></span>
+                {{ u.status|replace('_', ' ')|capitalize }}
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Joined Date -->
+            <td style="padding:14px 16px;color:#64748B;font-size:12.5px;">
+              {{ u.created_at }}
+            </td>
+
+            <!-- Actions (Approve & Delete) -->
+            <td style="padding:14px 20px;text-align:right;white-space:nowrap;">
+              <div style="display:inline-flex;align-items:center;gap:6px;justify-content:flex-end;">
+                {% if u.status != 'active' %}
+                <button type="button" 
+                        onclick="approveUserRow('{{ u.id }}', '{{ u.full_name|replace("'", "\\'") }}', this)" 
+                        title="Approve this account"
+                        style="background:#16A34A;color:#FFFFFF;border:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,0.06);transition:background 0.15s ease;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Approve
+                </button>
+                {% else %}
+                <span style="background:#EBF4EE;color:#1E5034;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  Approved
+                </span>
+                {% endif %}
+
+                {% if u.email not in ['admin@campusx.edu', 'superadmin@campusx.edu'] %}
+                <button type="button" 
+                        onclick="deleteUserRow('{{ u.id }}', '{{ u.full_name|replace("'", "\\'") }}', '{{ u.role }}', '{{ u.institutional_id }}', this)" 
+                        title="Delete this user and ID"
+                        style="background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all 0.15s ease;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                  Delete
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Table Footer Summary -->
+    <div style="padding:14px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#64748B;">
+      <div>
+        Showing <strong id="visible-count">{{ users|length }}</strong> of <strong>{{ users|length }}</strong> total institutional users
+      </div>
+      <div>
+        Enrolled Student Cohort: <strong style="color:#1E5034;">{{ stats.enrolled_students_count }} Students ({{ stats.enrollment_rate_pct }}%)</strong>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Client-side Filtering & Search Script -->
+<script>
+let currentRoleFilter = 'ALL';
+
+function setRoleFilter(filter, btn) {
+  currentRoleFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.style.background = '#FFFFFF';
+    b.style.color = '#0F172A';
+  });
+  btn.style.background = '#0F172A';
+  btn.style.color = '#FFFFFF';
+  filterUsers();
+}
+
+function filterUsers() {
+  const query = (document.getElementById('user-search-input').value || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('.user-row');
+  let visibleCount = 0;
+
+  rows.forEach(row => {
+    const role = row.getAttribute('data-role') || '';
+    const isEnrolled = row.getAttribute('data-enrolled') === 'true';
+    const name = (row.querySelector('.user-name')?.innerText || '').toLowerCase();
+    const email = (row.querySelector('.user-email')?.innerText || '').toLowerCase();
+    const program = (row.querySelector('.user-program')?.innerText || '').toLowerCase();
+
+    const instId = (row.querySelector('.user-inst-id')?.innerText || '').toLowerCase();
+
+    // Check query match
+    const matchesQuery = !query || name.includes(query) || email.includes(query) || program.includes(query) || instId.includes(query);
+
+    // Check filter match
+    let matchesFilter = true;
+    if (currentRoleFilter === 'ENROLLED') {
+      matchesFilter = (role === 'STUDENT' && isEnrolled);
+    } else if (currentRoleFilter === 'STUDENT') {
+      matchesFilter = (role === 'STUDENT');
+    } else if (currentRoleFilter === 'FACULTY') {
+      matchesFilter = (role === 'FACULTY');
+    } else if (currentRoleFilter === 'PENDING') {
+      const status = (row.getAttribute('data-status') || '').toLowerCase();
+      matchesFilter = (status !== 'active');
+    }
+
+    if (matchesQuery && matchesFilter) {
+      row.style.display = '';
+      visibleCount++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  const countEl = document.getElementById('visible-count');
+  if (countEl) countEl.innerText = visibleCount;
+}
+
+// ── Approve and Delete Actions ──────────────────────────────
+async function approveUserRow(userId, userName, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Approving...';
+  }
+  try {
+    const res = await fetch(`/admin/users/${userId}/approve`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const row = document.getElementById(`user-row-${userId}`);
+      if (row) {
+        row.setAttribute('data-status', 'active');
+        const statusBadge = row.querySelector('.user-status-badge');
+        if (statusBadge) {
+          statusBadge.style.color = '#1E5034';
+          statusBadge.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#1E5034;"></span> Active`;
+        }
+        const actionsDiv = row.querySelector('td:last-child div');
+        if (actionsDiv) {
+          btnEl.remove();
+          const approvedBadge = document.createElement('span');
+          approvedBadge.style.cssText = 'background:#EBF4EE;color:#1E5034;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;';
+          approvedBadge.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Approved`;
+          actionsDiv.prepend(approvedBadge);
+        }
+      }
+      showToastBanner(`Account for ${userName} has been approved and activated!`, 'success');
+    } else {
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Approve';
+      }
+      alert(data.error || 'Failed to approve user.');
+    }
+  } catch (err) {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = 'Approve';
+    }
+    alert('Network error while approving user.');
+  }
+}
+
+async function deleteUserRow(userId, userName, role, instId, btnEl) {
+  const confirmed = confirm(`Are you sure you want to permanently delete ${role} account for "${userName}" (${instId})?\n\nThis will remove their institutional ID, course enrollments, and profile.`);
+  if (!confirmed) return;
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Deleting...';
+  }
+  try {
+    const res = await fetch(`/admin/users/${userId}/delete`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' }
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const row = document.getElementById(`user-row-${userId}`);
+      if (row) {
+        row.style.transition = 'all 0.25s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+        setTimeout(() => {
+          row.remove();
+          filterUsers();
+        }, 260);
+      }
+      showToastBanner(`Account for ${userName} (${instId}) has been deleted.`, 'info');
+    } else {
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Delete';
+      }
+      alert(data.error || 'Failed to delete user.');
+    }
+  } catch (err) {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = 'Delete';
+    }
+    alert('Network error while deleting user.');
+  }
+}
+
+function showToastBanner(msg, type = 'success') {
+  let toast = document.getElementById('admin-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'admin-toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13.5px;font-weight:600;z-index:99999;box-shadow:0 10px 25px rgba(0,0,0,0.15);transition:all 0.3s ease;display:flex;align-items:center;gap:10px;';
+    document.body.appendChild(toast);
+  }
+  if (type === 'success') {
+    toast.style.background = '#1E5034';
+    toast.style.color = '#FFFFFF';
+    toast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${msg}`;
+  } else {
+    toast.style.background = '#0F172A';
+    toast.style.color = '#FFFFFF';
+    toast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ${msg}`;
+  }
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+  }, 3500);
+}
+
+// Modal handling & ID Generator
+function updateGeneratedId() {
+  const roleSelect = document.getElementById('new-user-role');
+  const deptSelect = document.getElementById('new-user-dept');
+  const idInput = document.getElementById('new-user-inst-id');
+  
+  if (!idInput) return;
+  const role = roleSelect ? roleSelect.value : 'STUDENT';
+  const prefix = role === 'STUDENT' ? 'STU' : (role === 'FACULTY' ? 'FAC' : 'ADM');
+  const selectedOption = deptSelect ? deptSelect.options[deptSelect.selectedIndex] : null;
+  const branch = selectedOption ? (selectedOption.getAttribute('data-branch') || 'CSE') : 'CSE';
+  
+  const currentVal = idInput.value || '';
+  const seqMatch = currentVal.match(/\d+$/);
+  const seq = seqMatch ? seqMatch[0] : String(Math.floor(10 + Math.random() * 90)).padStart(3, '0');
+  
+  idInput.value = `${prefix}-${branch}-2026-${seq}`;
+  updateEmailSuggestion();
+}
+
+function regenerateRandomId() {
+  const idInput = document.getElementById('new-user-inst-id');
+  const roleSelect = document.getElementById('new-user-role');
+  const deptSelect = document.getElementById('new-user-dept');
+  const role = roleSelect ? roleSelect.value : 'STUDENT';
+  const prefix = role === 'STUDENT' ? 'STU' : (role === 'FACULTY' ? 'FAC' : 'ADM');
+  const selectedOption = deptSelect ? deptSelect.options[deptSelect.selectedIndex] : null;
+  const branch = selectedOption ? (selectedOption.getAttribute('data-branch') || 'CSE') : 'CSE';
+  const seq = String(Math.floor(1 + Math.random() * 999)).padStart(3, '0');
+  idInput.value = `${prefix}-${branch}-2026-${seq}`;
+}
+
+function updateEmailSuggestion() {
+  const nameInput = document.getElementById('new-user-fullname');
+  const emailInput = document.getElementById('new-user-email');
+  const deptSelect = document.getElementById('new-user-dept');
+  if (!nameInput || !emailInput) return;
+
+  const rawName = nameInput.value.trim().toLowerCase();
+  if (!rawName) return;
+
+  // Only auto-update if email hasn't been manually typed or is already generated
+  if (!emailInput.value || emailInput.getAttribute('data-auto') === 'true') {
+    const selectedOption = deptSelect ? deptSelect.options[deptSelect.selectedIndex] : null;
+    const branch = selectedOption ? (selectedOption.getAttribute('data-branch') || 'CSE').toLowerCase() : 'cse';
+    const parts = rawName.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const slug = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : (parts[0] || 'user');
+    emailInput.value = `${slug}.${branch}@campusx.edu`;
+    emailInput.setAttribute('data-auto', 'true');
+  }
+}
+
+function openCreateUserModal() {
+  const modal = document.getElementById('create-user-modal');
+  const msgBox = document.getElementById('create-modal-msg');
+  if (msgBox) { msgBox.style.display = 'none'; msgBox.innerHTML = ''; }
+  modal.style.display = 'flex';
+  regenerateRandomId();
+  setTimeout(() => {
+    const fn = document.getElementById('new-user-fullname');
+    if (fn) fn.focus();
+  }, 50);
+}
+
+function closeCreateUserModal() {
+  document.getElementById('create-user-modal').style.display = 'none';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCreateUserModal();
+});
+
+// AJAX Form submission for instant feedback
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('#create-user-modal form');
+  if (form) {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const msgBox = document.getElementById('create-modal-msg');
+      if (msgBox) msgBox.style.display = 'none';
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.textContent : 'Create Account';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating Account...';
+      }
+
+      const formData = new FormData(form);
+      try {
+        const res = await fetch('/admin/users/create', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          if (msgBox) {
+            msgBox.style.display = 'block';
+            msgBox.style.background = '#F0FDF4';
+            msgBox.style.border = '1px solid #86EFAC';
+            msgBox.style.color = '#166534';
+            msgBox.innerHTML = `<strong>Success!</strong> ${data.message}. Reloading directory...`;
+          }
+          setTimeout(() => {
+            const redirectEmail = data.user ? (data.user.full_name + ' (' + data.user.institutional_id + ')') : '';
+            window.location.href = '/admin/users?created=' + encodeURIComponent(redirectEmail);
+          }, 700);
+        } else {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
+          if (msgBox) {
+            msgBox.style.display = 'block';
+            msgBox.style.background = '#FEF2F2';
+            msgBox.style.border = '1px solid #FCA5A5';
+            msgBox.style.color = '#991B1B';
+            msgBox.innerHTML = `<strong>Error:</strong> ${data.error || 'Failed to create user. Please check all fields.'}`;
+          }
+        }
+      } catch (err) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+        form.submit();
+      }
+    });
+  }
+});
+</script>
+
+<!-- Create New User Modal Dialog -->
+<div id="create-user-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#FFFFFF;border-radius:12px;width:100%;max-width:540px;padding:26px;box-shadow:0 20px 48px rgba(0,0,0,0.2);position:relative;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid #E2E8F0;margin-bottom:18px;">
+      <div>
+        <h3 style="margin:0;font-size:18px;font-weight:700;color:#0F172A;">Create New Student / Faculty ID</h3>
+        <p style="margin:3px 0 0 0;font-size:12.5px;color:#64748B;">Generate an institutional identity linked with the department &amp; branch.</p>
+      </div>
+      <button type="button" onclick="closeCreateUserModal()" style="background:none;border:none;font-size:22px;color:#64748B;cursor:pointer;line-height:1;">&times;</button>
+    </div>
+
+    <!-- Live inline alert in modal -->
+    <div id="create-modal-msg" style="display:none;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;"></div>
+
+    <form method="POST" action="/admin/users/create">
+      <!-- Full Name -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Full Name *</label>
+        <input type="text" name="full_name" id="new-user-fullname" oninput="updateEmailSuggestion()" placeholder="e.g. Yash Wankhade or Dr. Alan Turing" required style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;" />
+      </div>
+
+      <!-- Role / Account Type -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Account Role *</label>
+        <select name="role" id="new-user-role" onchange="updateGeneratedId()" style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;background:#FFFFFF;">
+          <option value="STUDENT" selected>Student (Enrolled in Department Program)</option>
+          <option value="FACULTY">Faculty (Instructor &amp; Content Contributor)</option>
+          <option value="ADMIN">System Administrator</option>
+          <option value="DEPARTMENT_ADMIN">Department Administrator</option>
+        </select>
+      </div>
+
+      <!-- Department / Branch Selection -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Department / Academic Branch *</label>
+        <select name="department_id" id="new-user-dept" onchange="updateGeneratedId()" style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;background:#FFFFFF;">
+          {% for d in departments %}
+          <option value="{{ d.id }}" data-branch="{{ d.branch_code }}" {% if d.branch_code == 'CSE' %}selected{% endif %}>
+            {{ d.display_code or d.branch_code }} &mdash; {{ d.name }}
+          </option>
+          {% endfor %}
+        </select>
+        <span style="font-size:11.5px;color:#64748B;margin-top:3px;display:block;">
+          The branch name/code is embedded directly into the generated ID and institutional email.
+        </span>
+      </div>
+
+      <!-- Branch-tagged Institutional ID -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Institutional ID (Contains Department/Branch) *</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" name="institutional_id" id="new-user-inst-id" value="STU-CSE-2026-001" required style="width:100%;padding:9px 12px;font-size:13.5px;font-family:monospace;font-weight:700;letter-spacing:0.04em;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;background:#F8FAFC;color:#0F172A;" />
+          <button type="button" onclick="regenerateRandomId()" style="padding:0 12px;border:1px solid #CBD5E1;border-radius:6px;background:#F1F5F9;color:#334155;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;" title="Generate new sequence">
+            Auto ID
+          </button>
+        </div>
+        <span style="font-size:11.5px;color:#64748B;margin-top:3px;display:block;">
+          Standard format: <code>STU-&lt;BRANCH&gt;-2026-XXX</code> for Students or <code>FAC-&lt;BRANCH&gt;-2026-XXX</code> for Faculty.
+        </span>
+      </div>
+
+      <!-- Institutional Email -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Institutional Email Address *</label>
+        <input type="email" name="email" id="new-user-email" placeholder="e.g. yash.wankhade.cse@campusx.edu" oninput="this.removeAttribute('data-auto')" required style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;" />
+        <span style="font-size:11.5px;color:#64748B;margin-top:3px;display:block;">
+          Auto-suggests branch-tagged email format (e.g. <code>firstname.lastname.cse@campusx.edu</code>).
+        </span>
+      </div>
+
+      <!-- Initial Account / Approval Status -->
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Approval Status *</label>
+        <select name="status" id="new-user-status" style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;background:#FFFFFF;">
+          <option value="active" selected>Active &bull; Approved Immediately</option>
+          <option value="pending_approval">Pending Approval &bull; Requires Verification</option>
+        </select>
+        <span style="font-size:11.5px;color:#64748B;margin-top:3px;display:block;">
+          Active accounts can log in immediately. Pending accounts require clicking "Approve" in this directory.
+        </span>
+      </div>
+
+      <!-- Password -->
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:#0F172A;margin-bottom:5px;">Initial Password</label>
+        <input type="text" name="password" value="Password123!" style="width:100%;padding:9px 12px;font-size:13.5px;border:1px solid #CBD5E1;border-radius:6px;box-sizing:border-box;outline:none;background:#F8FAFC;" />
+        <span style="font-size:11.5px;color:#64748B;margin-top:3px;display:block;">Default password set to Password123!</span>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:14px;border-top:1px solid #E2E8F0;">
+        <button type="button" onclick="closeCreateUserModal()" style="padding:8px 16px;background:#F1F5F9;color:#334155;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;">Cancel</button>
+        <button type="submit" style="padding:8px 18px;background:#0F172A;color:#FFFFFF;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;">Create Account</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

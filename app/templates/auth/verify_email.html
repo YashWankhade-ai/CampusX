@@ -1,0 +1,280 @@
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Verify your email — CampusX{% endblock %}
+{% block meta_description %}Verify your email address to activate your CampusX account.{% endblock %}
+
+{% block topbar_right %}
+<a href="/login" class="btn btn-ghost btn-sm">Back to login</a>
+{% endblock %}
+
+{% block auth_content %}
+<div class="auth-panel-header">
+  <!-- Email icon -->
+  <div style="width:52px;height:52px;background:var(--cx-bg-highlight);border-radius:var(--cx-radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--cx-space-5);border:1px solid rgba(196,154,69,0.25);">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cx-color-ochre)" stroke-width="1.75" aria-hidden="true">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  </div>
+  <h1 class="auth-panel-title">Check your email</h1>
+  <p class="auth-panel-sub">We've sent a 6-digit verification code to <strong id="email-display">your email</strong>. Enter it below to activate your account.</p>
+  {% if institutional_id %}
+  <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;background:#F0FDF4;border:1px solid #86EFAC;padding:6px 14px;border-radius:6px;font-size:13px;color:#166534;">
+    <span>Your Institutional ID:</span>
+    <strong style="font-family:monospace;font-size:14px;letter-spacing:0.04em;">{{ institutional_id }}</strong>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Development Mode Helper Banner -->
+<div style="background: rgba(196, 154, 69, 0.12); border: 1px dashed var(--cx-color-ochre); border-radius: var(--cx-radius-md); padding: var(--cx-space-3) var(--cx-space-4); margin-bottom: var(--cx-space-4); font-size: 0.875rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div>
+      <span style="font-weight: 700; color: var(--cx-color-forest);">Dev Mode:</span>
+      <span style="color: var(--cx-text-secondary);"> No SMTP server? Use verification code </span>
+      <strong style="font-size: 1rem; color: var(--cx-color-ochre); background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; font-family: monospace;">123456</strong>
+    </div>
+    <button type="button" id="autofill-dev-code" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.8rem; height: auto;">
+      Auto-fill 123456
+    </button>
+  </div>
+</div>
+
+<!-- Error banner -->
+<div class="alert alert-error" id="auth-error" role="alert" aria-live="assertive">
+  <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+  </svg>
+  <span id="auth-error-msg"></span>
+</div>
+
+<!-- Success banner -->
+<div class="alert alert-success" id="auth-success" role="status" aria-live="polite">
+  <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+  <span id="auth-success-msg"></span>
+</div>
+
+<form class="auth-form" id="verify-form" novalidate>
+
+  <div class="form-group">
+    <label class="form-label" for="otp_code">Verification code</label>
+    <!-- 6 individual digit boxes for UX, but backed by a single hidden input -->
+    <div id="otp-boxes" style="display:flex;gap:var(--cx-space-2);justify-content:center;" aria-label="6-digit verification code">
+      {% for i in range(6) %}
+      <input
+        class="input otp-digit"
+        type="text"
+        inputmode="numeric"
+        pattern="[0-9]"
+        maxlength="1"
+        style="width:48px;height:52px;text-align:center;font-size:var(--cx-text-h3);font-weight:var(--cx-weight-bold);padding:0;"
+        aria-label="Digit {{ i+1 }}"
+        autocomplete="{% if i == 0 %}one-time-code{% else %}off{% endif %}"
+      >
+      {% endfor %}
+    </div>
+    <input type="hidden" id="otp_code" name="otp_code">
+    <span class="form-error" id="otp-error" role="alert" style="display:none;text-align:center;margin-top:var(--cx-space-2);"></span>
+  </div>
+
+  <button type="submit" class="btn btn-primary w-full" id="verify-btn" style="justify-content:center;">
+    <span id="verify-btn-text">Verify email</span>
+    <svg id="verify-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      style="display:none;animation:spin 0.8s linear infinite;" aria-hidden="true">
+      <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-opacity="0.25"/>
+      <path d="M21 12a9 9 0 00-9-9"/>
+    </svg>
+  </button>
+
+</form>
+
+<div style="text-align:center;margin-top:var(--cx-space-6);">
+  <p style="font-size:var(--cx-text-body-sm);color:var(--cx-text-muted);">
+    Didn't receive a code?
+  </p>
+  <button id="resend-btn" class="btn btn-ghost btn-sm" style="margin-top:var(--cx-space-2);" disabled>
+    <span id="resend-label">Resend code</span>
+    <span id="resend-countdown" style="color:var(--cx-text-muted);"></span>
+  </button>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.otp-digit:focus { border-color: var(--cx-border-focus); box-shadow: 0 0 0 3px rgba(36,72,58,0.12); }
+.otp-digit.is-error { border-color: var(--cx-border-destructive); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (CampusX.auth.isAuthenticated()) {
+    window.location.replace(CampusX.dashboardForRole(CampusX.auth.getRole()));
+    return;
+  }
+
+  const templateEmail = {{ (email or '')|tojson }};
+  const urlEmail = new URLSearchParams(window.location.search).get('email') || '';
+  const email = templateEmail || urlEmail || sessionStorage.getItem('cx_pending_email') || '';
+  if (email) {
+    document.getElementById('email-display').textContent = email;
+    try { sessionStorage.setItem('cx_pending_email', email); } catch {}
+  }
+
+  // ── OTP digit inputs ───────────────────────────────────────────
+  const digits = Array.from(document.querySelectorAll('.otp-digit'));
+  const hiddenInput = document.getElementById('otp_code');
+
+  function assembleOtp() {
+    return digits.map(d => d.value).join('');
+  }
+
+  const autofillBtn = document.getElementById('autofill-dev-code');
+  if (autofillBtn) {
+    autofillBtn.addEventListener('click', () => {
+      '123456'.split('').forEach((ch, idx) => {
+        if (digits[idx]) digits[idx].value = ch;
+      });
+      hiddenInput.value = '123456';
+      digits.forEach(d => d.classList.remove('is-error'));
+      const errEl = document.getElementById('otp-error');
+      if (errEl) errEl.style.display = 'none';
+      if (digits[5]) digits[5].focus();
+    });
+  }
+
+  digits.forEach((el, i) => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !el.value && i > 0) {
+        digits[i - 1].focus();
+      }
+    });
+    el.addEventListener('input', () => {
+      // Allow only digits
+      el.value = el.value.replace(/[^0-9]/g, '').slice(-1);
+      hiddenInput.value = assembleOtp();
+      if (el.value && i < digits.length - 1) digits[i + 1].focus();
+      // Clear error styling
+      digits.forEach(d => d.classList.remove('is-error'));
+      document.getElementById('otp-error').style.display = 'none';
+    });
+    // Handle paste of full 6-digit code
+    el.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      pasted.split('').slice(0, 6).forEach((ch, j) => {
+        if (digits[j]) digits[j].value = ch;
+      });
+      hiddenInput.value = assembleOtp();
+      const next = Math.min(pasted.length, 5);
+      digits[next].focus();
+    });
+  });
+
+  // Focus first digit on load
+  setTimeout(() => digits[0] && digits[0].focus(), 100);
+
+  // ── Resend countdown ───────────────────────────────────────────
+  const resendBtn       = document.getElementById('resend-btn');
+  const resendLabel     = document.getElementById('resend-label');
+  const resendCountdown = document.getElementById('resend-countdown');
+  let countdown = 60;
+  let timer;
+
+  function startCountdown() {
+    resendBtn.disabled = true;
+    countdown = 60;
+    resendCountdown.textContent = ` (${countdown}s)`;
+    clearInterval(timer);
+    timer = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(timer);
+        resendBtn.disabled = false;
+        resendCountdown.textContent = '';
+        resendLabel.textContent = 'Resend code';
+      } else {
+        resendCountdown.textContent = ` (${countdown}s)`;
+      }
+    }, 1000);
+  }
+  startCountdown();
+
+  resendBtn.addEventListener('click', async () => {
+    if (!email) { showBanner('Cannot resend — no email address found. Please register again.'); return; }
+    resendBtn.disabled = true;
+    resendLabel.textContent = 'Sending…';
+    try {
+      await CampusX.api.resendOtp(email);
+      showSuccess('A new code has been sent to ' + email + '.');
+      startCountdown();
+    } catch (err) {
+      showBanner(CampusX.friendlyError(err));
+      resendBtn.disabled = false;
+      resendLabel.textContent = 'Resend code';
+    }
+  });
+
+  // ── Banner helpers ─────────────────────────────────────────────
+  const errBanner = document.getElementById('auth-error');
+  const errMsg    = document.getElementById('auth-error-msg');
+  const succBanner = document.getElementById('auth-success');
+  const succMsg    = document.getElementById('auth-success-msg');
+
+  function showBanner(msg) {
+    succBanner.classList.remove('visible');
+    errMsg.textContent = msg;
+    errBanner.classList.add('visible');
+  }
+  function hideBanner()   { errBanner.classList.remove('visible'); }
+  function showSuccess(msg) {
+    errBanner.classList.remove('visible');
+    succMsg.textContent = msg;
+    succBanner.classList.add('visible');
+  }
+
+  function setLoading(on) {
+    document.getElementById('verify-btn').disabled = on;
+    document.getElementById('verify-btn-text').textContent = on ? 'Verifying…' : 'Verify email';
+    document.getElementById('verify-spinner').style.display = on ? '' : 'none';
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────
+  document.getElementById('verify-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideBanner();
+    const otp = assembleOtp();
+    if (otp.length < 6) {
+      digits.forEach(d => d.classList.add('is-error'));
+      const errEl = document.getElementById('otp-error');
+      errEl.textContent = 'Please enter all 6 digits of your verification code.';
+      errEl.style.display = '';
+      digits[0].focus();
+      return;
+    }
+    if (!email) { showBanner('Session expired. Please register again.'); return; }
+
+    setLoading(true);
+    try {
+      const res  = await CampusX.api.verifyEmail(email, otp);
+      const data = res.data || res;
+      sessionStorage.removeItem('cx_pending_email');
+      sessionStorage.removeItem('cx_verify_token');
+      CampusX.auth.setSession(data.access_token, data.refresh_token, data.user);
+      showSuccess('Email verified! Redirecting…');
+      setTimeout(() => window.location.replace(CampusX.dashboardForRole(data.user?.role)), 1200);
+    } catch (err) {
+      setLoading(false);
+      if (err.type === 'INVALID_OTP' || err.type === 'EXPIRED_OTP' || err.type === 'MAX_ATTEMPTS_EXCEEDED') {
+        digits.forEach(d => { d.classList.add('is-error'); d.value = ''; });
+        hiddenInput.value = '';
+        digits[0].focus();
+      }
+      showBanner(CampusX.friendlyError(err));
+    }
+  });
+})();
+</script>
+{% endblock %}

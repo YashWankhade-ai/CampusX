@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="1; url={{ redirect_url }}">
+  <title>Logging In — CampusX</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: var(--cx-color-sand, #F7F5F0);
+      font-family: var(--cx-font-body, system-ui, sans-serif);
+      color: var(--cx-color-ink, #1F2421);
+    }
+    .success-card {
+      background: #FFFFFF;
+      border: 1px solid var(--cx-border-subtle, #E4E0D8);
+      border-radius: var(--cx-radius-lg, 12px);
+      padding: var(--cx-space-8, 32px);
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .success-spinner {
+      width: 38px;
+      height: 38px;
+      margin: 0 auto var(--cx-space-4, 16px);
+      border: 3px solid rgba(36, 72, 58, 0.15);
+      border-top-color: var(--cx-color-forest, #24483A);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="success-card">
+    <div class="success-spinner"></div>
+    <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 8px; color: var(--cx-color-forest, #24483A);">Logged in successfully!</h2>
+    <p style="color: var(--cx-text-muted, #61745A); font-size: 14px; margin: 0 0 20px;">
+      Welcome, {{ token_data.user.full_name or 'Scholar' }}! Redirecting to your dashboard…
+    </p>
+    <a href="{{ redirect_url }}" class="btn btn-primary btn-sm" id="redir-btn" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;">
+      Go to Dashboard &rarr;
+    </a>
+  </div>
+
+  <script>
+    (function() {
+      try {
+        const data = {{ token_data | tojson }};
+        if (data && data.access_token) {
+          localStorage.setItem('cx_access_token', data.access_token);
+          sessionStorage.setItem('cx_access_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('cx_refresh_token', data.refresh_token);
+            sessionStorage.setItem('cx_refresh_token', data.refresh_token);
+          }
+          if (data.user) {
+            localStorage.setItem('cx_user', JSON.stringify(data.user));
+            sessionStorage.setItem('cx_user', JSON.stringify(data.user));
+          }
+        }
+      } catch (err) {
+        console.error('Storage write error:', err);
+      }
+      setTimeout(function() {
+        window.location.replace('{{ redirect_url }}');
+      }, 250);
+    })();
+  </script>
+</body>
+</html>
