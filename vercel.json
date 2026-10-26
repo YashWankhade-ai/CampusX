@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index"
+      "destination": "https://yash1190-campusx.hf.space/$1"
     }
   ]
 }
