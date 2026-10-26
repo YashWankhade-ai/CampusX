@@ -21,6 +21,15 @@ try:
             print(f"[Vercel DB Warning]: {db_err}", flush=True)
 
     def app(environ, start_response):
+        # Restore original path if rewritten by Vercel CLI 65
+        raw_path = environ.get('PATH_INFO', '')
+        matched_path = environ.get('HTTP_X_MATCHED_PATH') or environ.get('HTTP_X_INVOKE_PATH')
+        
+        if matched_path:
+            environ['PATH_INFO'] = matched_path
+        elif raw_path in ('/api/index', '/api/index/'):
+            environ['PATH_INFO'] = '/'
+
         try:
             return flask_app(environ, start_response)
         except Exception:
