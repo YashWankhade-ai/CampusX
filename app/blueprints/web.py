@@ -140,7 +140,12 @@ def login():
         if not email_val or not password:
             error_msg = "Please enter both your email address and password."
         else:
-            success, result, status_code = auth_service.authenticate(email=email_val, password=password)
+            try:
+                success, result, status_code = auth_service.authenticate(email=email_val, password=password)
+            except Exception as e:
+                current_app.logger.error(f"[Login Exception]: {e}")
+                success, result, status_code = False, {"message": "Database is initializing, please refresh in a moment."}, 500
+
             if success:
                 user = result.get("user") or {}
                 role = (user.get("role") or "STUDENT").upper()
@@ -168,7 +173,11 @@ def login():
     elif request.method == "GET" and request.args.get("email") and request.args.get("password"):
         email_param = request.args.get("email", "").strip()
         pass_param = request.args.get("password", "")
-        success, result, status_code = auth_service.authenticate(email=email_param, password=pass_param)
+        try:
+            success, result, status_code = auth_service.authenticate(email=email_param, password=pass_param)
+        except Exception as e:
+            current_app.logger.error(f"[Login Auto Exception]: {e}")
+            success, result, status_code = False, {"message": "Database is initializing, please refresh in a moment."}, 500
         if success:
             user = result.get("user") or {}
             role = (user.get("role") or "STUDENT").upper()
@@ -226,10 +235,15 @@ def register():
                 return idx
         return 999
 
-    raw_depts = Department.query.filter_by(is_deleted=False).all()
+    raw_depts = []
+    try:
+        raw_depts = Department.query.filter_by(is_deleted=False).all()
+    except Exception as e:
+        raw_depts = []
+
     filtered_depts = [
         d for d in raw_depts
-        if any(k in d.name.lower() for k in APPROVED_DEPARTMENT_KEYWORDS)
+        if any(k in (d.name or "").lower() for k in APPROVED_DEPARTMENT_KEYWORDS)
     ]
     filtered_depts = sorted(filtered_depts, key=_dept_sort)
 
@@ -242,6 +256,17 @@ def register():
         }
         for d in filtered_depts
     ]
+
+    # Resilient fallback options if database was just initialized
+    if not dept_options:
+        dept_options = [
+            {"id": "cse", "name": "Computer Science & Engineering", "branch_code": "CSE", "display_code": "CSE"},
+            {"id": "ai", "name": "Artificial Intelligence & Data Science", "branch_code": "AIDS", "display_code": "AI/DS"},
+            {"id": "it", "name": "Information Technology", "branch_code": "IT", "display_code": "IT"},
+            {"id": "ece", "name": "Electronics & Communication Engineering", "branch_code": "ECE", "display_code": "ECE"},
+            {"id": "me", "name": "Mechanical Engineering", "branch_code": "ME", "display_code": "ME"},
+            {"id": "ce", "name": "Civil Engineering", "branch_code": "CE", "display_code": "CE"},
+        ]
 
     if request.method == "POST":
         data = {
